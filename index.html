@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stylised Route Map (Clean Joins)</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:0px; text-align:center; }
+    body { font-family: Arial, sans-serif; margin:0; padding:0px; text-align:center; }
 
     .controls { margin: 16px; }
     label { margin: 0 10px; cursor: pointer; }
@@ -29,12 +29,31 @@
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear1"> Year 1</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear2"> Year 2</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear3"> Year 3</label>
+    <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear4"> Year 4</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleLabels"> Labels</label>
   </div>
   </div>
 
   <script>
     const routes = [
+          {
+        name: "Year 4",
+        color: "limegreen",
+        toggleId: "toggleYear4",
+        points: [
+
+{ x: 5, y: 11, label: "Alaska", labelPos: "above", startMode: "horizontal" },
+{ x: 22, y: 14, label: "Churchill", labelPos: "below", startMode: "horizontal" },
+{ x: 34, y: 11, label: "Greenland", labelPos: "above", startMode: "" },
+{ x: 42, y: 11, label: "Iceland", labelPos: "above", startMode: "" },
+{ x: 51, y: 11, label: "Norway", labelPos: "", startMode: "" },
+{ x: 51, y: 3, label: "Svalbard", labelPos: "left", startMode: "" },
+{ x: 51, y: 16, label: "Denmark", labelPos: "left", startMode: "" },
+{ x: 51, y: 22, label: "Budapest", labelPos: "", startMode: "" }
+
+        ]
+      },
+          
           {
         name: "Year 3",
         color: "orange",
@@ -53,11 +72,11 @@
 { x: 37, y: 54, label: "Recife", labelPos: "", startMode: "" },
 { x: 47, y: 19, label: "", labelPos: "above", startMode: "" },
 { x: 52.5, y: 19, label: "Poland", labelPos: "", startMode: "" },
-{ x: 54, y: 16, label: "Latvia", labelPos: "left", startMode: "" },
+{ x: 54, y: 16, label: "Latvia", labelPos: "right", startMode: "" },
 { x: 54, y: 12, label: "Finland", labelPos: "above", startMode: "horizontal" },
 { x: 66, y: 22, label: "Turkmenistan", labelPos: "below", startMode: "" },
-{ x: 77, y: 22, label: "Mongolia", labelPos: "above", startMode: "horizontal" },
-{ x: 79.5, y: 25, label: "China", labelPos: "", startMode: "" },
+{ x: 75.5, y: 22, label: "Mongolia", labelPos: "above", startMode: "horizontal" },
+{ x: 77, y: 25, label: "China", labelPos: "", startMode: "" },
 { x: 82, y: 28, label: "South Korea", labelPos: "", startMode: "" }
 
         ]
@@ -109,7 +128,7 @@
 { x: 40, y:  42 , label: "Cape Verde ", labelPos: "", startMode: "vertical" },
 { x: 40, y: 28, label: "Azores", labelPos: "left", startMode: "" },
 { x: 45 , y: 26.5, label: "Portugal ", labelPos: "below", startMode: "vertical" },
-{ x: 47 , y:  19 , label: "UK", labelPos: "above", startMode: "" },
+{ x: 47 , y:  19 , label: "UK", labelPos: "left", startMode: "" },
 { x: 52.5, y: 26.5, label: "Greece", labelPos: "above", startMode: "" },
 { x: 55 , y: 26.5, label: "Turkiye ", labelPos: "below", startMode: "" },
 { x: 60 , y: 26.5, label: "Azerbaijan", labelPos: "above", startMode: "" },
