@@ -2,8 +2,8 @@ name: Sync safety data
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # 02:00 UTC daily (noon AWST)
-  workflow_dispatch:        # manual trigger from GitHub Actions UI
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   sync-safety:
@@ -14,68 +14,84 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-      - name: Fetch Smartraveller data
-        id: fetch
+      - name: Fetch and cache Smartraveller data
         run: |
-          echo "Fetching Smartraveller destinations export..."
-          HTTP_CODE=$(curl -sSL \
+          set -e
+
+          echo "=== Fetching Smartraveller ==="
+          HTTP_CODE=$(curl -s \
             --max-time 30 \
             --retry 3 \
             --retry-delay 5 \
             -H "Accept: application/json" \
-            -H "User-Agent: Mozilla/5.0 (compatible; travel-guide-sync/1.0)" \
+            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
             -w "%{http_code}" \
             -o /tmp/smartraveller-raw.json \
             "https://www.smartraveller.gov.au/destinations-export")
+
           echo "HTTP status: $HTTP_CODE"
+          echo "Response size: $(wc -c < /tmp/smartraveller-raw.json) bytes"
+          echo "First 300 chars of response:"
+          head -c 300 /tmp/smartraveller-raw.json || true
+          echo ""
+
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Fetch failed with HTTP $HTTP_CODE"
-            cat /tmp/smartraveller-raw.json || true
-            exit 1
+            echo "ERROR: HTTP $HTTP_CODE — skipping cache update"
+            exit 0
           fi
-          echo "Fetch complete. File size: $(wc -c < /tmp/smartraveller-raw.json) bytes"
 
-      - name: Validate JSON
-        run: |
-          python3 -c "
-          import json, sys
-          with open('/tmp/smartraveller-raw.json') as f:
-              data = json.load(f)
+          echo "=== Transforming to keyed cache ==="
+          python3 << 'PYEOF'
+          import json, sys, datetime, os
+
+          raw_path = '/tmp/smartraveller-raw.json'
+
+          # Read and inspect
+          with open(raw_path, 'rb') as f:
+              raw_bytes = f.read()
+          print(f"Raw bytes: {len(raw_bytes)}")
+          print(f"First 200 chars: {raw_bytes[:200]}")
+
+          # Parse
+          try:
+              data = json.loads(raw_bytes)
+          except json.JSONDecodeError as e:
+              print(f"JSON parse failed: {e}")
+              print("Smartraveller may be returning HTML/error page. Skipping update.")
+              sys.exit(0)
+
           if not isinstance(data, list):
-              print(f'ERROR: Expected a list, got {type(data).__name__}')
-              print('Raw content preview:', open('/tmp/smartraveller-raw.json').read()[:500])
-              sys.exit(1)
-          print(f'Valid JSON: {len(data)} entries')
-          "
+              print(f"Unexpected type: {type(data)} — expected list. Skipping update.")
+              sys.exit(0)
 
-      - name: Transform to keyed cache
-        run: |
-          python3 - << 'PYEOF'
-          import json, datetime, os
+          print(f"Parsed {len(data)} entries")
 
-          with open('/tmp/smartraveller-raw.json') as f:
-              raw = json.load(f)
-
+          # Build keyed cache
           cache = {}
-          for entry in raw:
+          for entry in data:
               name = entry.get('name')
               if name:
                   cache[name] = entry
-
           cache['_fetched_at'] = datetime.datetime.utcnow().isoformat() + 'Z'
           cache['_count'] = len(cache) - 1
 
-          # Write to whichever data/ path exists (handles subfolder repo layouts)
-          candidates = ['data/safety-cache.json', 'travel-guide/data/safety-cache.json']
-          target = next((p for p in candidates if os.path.exists(os.path.dirname(p))), candidates[0])
+          # Find the right output path (handles repo-in-subfolder layout)
+          candidates = [
+              'data/safety-cache.json',
+              'travel-guide/data/safety-cache.json',
+          ]
+          target = None
+          for p in candidates:
+              if os.path.isdir(os.path.dirname(p)):
+                  target = p
+                  break
+          if not target:
+              print(f"Could not find data/ folder. Dirs present: {os.listdir('.')}")
+              sys.exit(0)
 
-          os.makedirs(os.path.dirname(target), exist_ok=True)
           with open(target, 'w') as f:
               json.dump(cache, f, indent=2)
-
           print(f"Wrote {cache['_count']} countries to {target}")
           PYEOF
 
@@ -84,5 +100,10 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A "**/safety-cache.json"
-          git diff --staged --quiet && echo "No changes to commit." || \
-            git commit -m "chore: update safety cache [skip ci]" && git push
+          if git diff --staged --quiet; then
+            echo "No changes — cache is up to date."
+          else
+            git commit -m "chore: update safety cache [skip ci]"
+            git push
+            echo "Cache updated and pushed."
+          fi
