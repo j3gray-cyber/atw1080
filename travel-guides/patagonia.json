@@ -1,0 +1,112 @@
+{
+  "id": "patagonia",
+  "title": "Patagonia",
+  "tagline": "Wild, wind-swept landscapes of glaciers, jagged peaks, and vast open silence.",
+  "hero_image": "../img/patagonia.jpg",
+  "country": "Argentina",
+  "smartraveller_country": "Argentina",
+
+  "snapshot": {
+    "best_time": "Jan–Feb",
+    "duration": "10–14 days",
+    "cost": "$$$",
+    "type": "Natural Wonder",
+    "intensity": "Moderate–High"
+  },
+
+  "quick_facts": {
+    "timezone": "GMT-3",
+    "visa": "90 days visa-free",
+    "language": "Spanish",
+    "payments": "Cards widely accepted"
+  },
+
+  "why_go": [
+    "See the iconic granite towers of Torres del Paine rise dramatically",
+    "Walk alongside vast glaciers like Perito Moreno",
+    "Experience remote and untouched landscapes far from crowds"
+  ],
+
+  "essential_experiences": [
+    "W Trek multi-day hiking circuit",
+    "Perito Moreno Glacier boardwalk and boat trip",
+    "El Chaltén & Fitz Roy day hikes"
+  ],
+
+  "seasonality": {
+    "Jan": "good",
+    "Feb": "good",
+    "Mar": "ok",
+    "Apr": "bad",
+    "May": "bad",
+    "Jun": "bad",
+    "Jul": "bad",
+    "Aug": "bad",
+    "Sep": "ok",
+    "Oct": "good",
+    "Nov": "good",
+    "Dec": "good"
+  },
+  "seasonality_note": "Best hiking conditions in summer (Dec–Feb), but wind is constant year-round.",
+
+  "food_and_drink": [
+    "Simple but hearty meals in refugios on the trail",
+    "Great cafés and restaurants in El Calafate",
+    "Vegetarian options limited in remote areas — plan ahead"
+  ],
+
+  "logistics": [
+    "Fly via Santiago or Buenos Aires, then domestic flight to Punta Arenas or El Calafate",
+    "Buses and pre-booked transfers are the easiest way to get around",
+    "Accommodation ranges from refugios to hotels and Airbnbs",
+    "Park passes required — book online well in advance"
+  ],
+
+  "friction_factors": [
+    "Very long travel time from Australia (30+ hours each way)",
+    "Highly unpredictable weather — four seasons in one day is common",
+    "Expensive accommodation inside the national parks",
+    "Limited vegetarian options in remote trail areas"
+  ],
+
+  "tips": [
+    "Book W Trek refugios 6–12 months in advance for Jan/Feb",
+    "Pack full waterproofs, layers, and sun protection — all needed daily",
+    "Border crossings between Chile and Argentina can take 1–2 hours"
+  ],
+
+  "water_safety": {
+    "status": "safe",
+    "label": "Generally Safe",
+    "note": "Tap water is safe in major towns. Check locally in remote backcountry."
+  },
+
+  "itinerary": [
+    { "day": 1, "label": "Arrive El Calafate, orientate" },
+    { "day": 2, "label": "Perito Moreno Glacier boardwalk" },
+    { "day": 3, "label": "Boat trip on Lago Argentino" },
+    { "day": 4, "label": "Travel to Puerto Natales" },
+    { "day": 5, "label": "Gear prep, explore town" },
+    { "day": 6, "label": "Enter Torres del Paine, W Trek begins" },
+    { "day": 7, "label": "W Trek — Mirador Las Torres" },
+    { "day": 8, "label": "W Trek — Valle del Francés" },
+    { "day": 9, "label": "W Trek — Glacier Grey" },
+    { "day": 10, "label": "Exit park, rest in Puerto Natales" },
+    { "day": 11, "label": "Day trip to El Chaltén / Fitz Roy" },
+    { "day": 12, "label": "Explore El Calafate at leisure" },
+    { "day": 13, "label": "Buffer / rest day" },
+    { "day": 14, "label": "Fly home via Buenos Aires" }
+  ],
+
+  "verdict": "A true nature escape. Remote, dramatic, and incredibly rewarding if you're willing to put in the effort. The scale of the landscapes is unlike anywhere else — nothing quite prepares you for it.",
+
+  "climate": {
+    "lat": -51.6,
+    "lon": -72.8
+  },
+
+  "currency": {
+    "code": "ARS",
+    "label": "Argentine Peso"
+  }
+}

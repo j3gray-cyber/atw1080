@@ -1,0 +1,64 @@
+name: Sync safety data
+
+# Runs every night at 02:00 UTC (noon AWST)
+# Also runs on push to main (to keep cache fresh after deploys)
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+jobs:
+  sync-safety:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit the cache file back
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch Smartraveller data
+        id: fetch
+        run: |
+          echo "Fetching Smartraveller destinations export…"
+          curl -sSL \
+            -H "Accept: application/json" \
+            -H "User-Agent: travel-guide-sync/1.0" \
+            "https://www.smartraveller.gov.au/destinations-export" \
+            -o /tmp/smartraveller-raw.json
+          echo "Fetch complete."
+
+      - name: Transform to keyed cache
+        run: |
+          # Convert array → object keyed by country name
+          # { "Australia": {...}, "Argentina": {...}, ... }
+          python3 - <<'EOF'
+          import json, datetime
+
+          with open('/tmp/smartraveller-raw.json') as f:
+              raw = json.load(f)
+
+          cache = {}
+          for entry in raw:
+              name = entry.get('name')
+              if name:
+                  cache[name] = entry
+
+          cache['_fetched_at'] = datetime.datetime.utcnow().isoformat() + 'Z'
+
+          with open('data/safety-cache.json', 'w') as f:
+              json.dump(cache, f, indent=2)
+
+          print(f"Cached {len(cache) - 1} countries.")
+          EOF
+
+      - name: Commit updated cache
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/safety-cache.json
+          # Only commit if something changed
+          git diff --staged --quiet || git commit -m "chore: update safety cache [skip ci]"
+          git push

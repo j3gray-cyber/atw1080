@@ -65,7 +65,11 @@
     if (crumb) crumb.textContent = d.title;
 
     const page = document.querySelector('.page');
+
+    // Keep the site-header, remove everything else
+    const header = page.querySelector('.site-header');
     page.innerHTML = '';
+    if (header) page.append(header);
 
     // Hero
     const hero = el('div', { class: 'hero' });

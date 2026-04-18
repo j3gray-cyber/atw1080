@@ -1,0 +1,105 @@
+{
+  "id": "athens",
+  "title": "Athens",
+  "tagline": "Ancient marble and modern chaos — a city that invented Western civilisation and never lets you forget it.",
+  "hero_image": "../img/athens.jpg",
+  "country": "Greece",
+  "smartraveller_country": "Greece",
+
+  "snapshot": {
+    "best_time": "Apr–Jun, Sep–Oct",
+    "duration": "5–7 days",
+    "cost": "$$",
+    "type": "History & Culture",
+    "intensity": "Low–Moderate"
+  },
+
+  "quick_facts": {
+    "timezone": "GMT+2 (GMT+3 in summer)",
+    "visa": "90 days (Schengen)",
+    "language": "Greek",
+    "payments": "Cards widely accepted"
+  },
+
+  "why_go": [
+    "Walk the Acropolis and stand beside the Parthenon",
+    "World-class museums with millennia of history in one place",
+    "Fantastic vegetarian-friendly food scene and incredible street food"
+  ],
+
+  "essential_experiences": [
+    "Acropolis and Parthenon at golden hour",
+    "National Archaeological Museum",
+    "Wandering Monastiraki and Plaka neighbourhoods",
+    "Day trip to Cape Sounion or the Saronic Islands"
+  ],
+
+  "seasonality": {
+    "Jan": "ok",
+    "Feb": "ok",
+    "Mar": "ok",
+    "Apr": "good",
+    "May": "good",
+    "Jun": "good",
+    "Jul": "bad",
+    "Aug": "bad",
+    "Sep": "good",
+    "Oct": "good",
+    "Nov": "ok",
+    "Dec": "ok"
+  },
+  "seasonality_note": "Spring and autumn are ideal. July–August is brutally hot and very crowded.",
+
+  "food_and_drink": [
+    "Excellent vegetarian options — spanakopita, gigantes, fava, horiatiki everywhere",
+    "Explore the food markets at Varvakios Agora",
+    "Ouzo, local wine, and excellent Greek coffee culture"
+  ],
+
+  "logistics": [
+    "Direct flights from major hubs; from Perth via Dubai, Singapore, or Doha",
+    "Metro from airport to city centre is easy and cheap",
+    "Walkable central city; metro and taxis for wider exploration",
+    "Wide range of accommodation from hostels to boutique hotels"
+  ],
+
+  "friction_factors": [
+    "Very crowded at major sites in summer",
+    "Heat can be intense July–August (38°C+)",
+    "Long flight from Perth (~20 hours with stopover)"
+  ],
+
+  "tips": [
+    "Book Acropolis tickets online — queues are brutal in season",
+    "Stay in Koukaki or Monastiraki for best walking access",
+    "Most museums are free on the first Sunday of the month"
+  ],
+
+  "water_safety": {
+    "status": "safe",
+    "label": "Safe to Drink",
+    "note": "Tap water is safe throughout Athens and most of Greece."
+  },
+
+  "itinerary": [
+    { "day": 1, "label": "Arrive, settle in, explore Monastiraki" },
+    { "day": 2, "label": "Acropolis, Parthenon, and Acropolis Museum" },
+    { "day": 3, "label": "National Archaeological Museum" },
+    { "day": 4, "label": "Plaka, Ancient Agora, Hadrian's Arch" },
+    { "day": 5, "label": "Day trip — Cape Sounion or Hydra" },
+    { "day": 6, "label": "Neighbourhood wander, food market, evening rooftop" },
+    { "day": 7, "label": "Fly out" }
+  ],
+
+  "verdict": "Punches well above its weight for a city of its size. The history is genuinely awe-inspiring, the food is excellent for vegetarians, and it's far more affordable than most European capitals. A fantastic first stop on a longer trip.",
+
+  "climate": {
+    "lat": 37.98,
+    "lon": 23.73
+  },
+
+  "currency": {
+    "code": "EUR",
+    "label": "Euro"
+  }
+}
