@@ -1,41 +1,60 @@
 name: Sync safety data
 
-# Runs every night at 02:00 UTC (noon AWST)
-# Also runs on push to main (to keep cache fresh after deploys)
 on:
   schedule:
-    - cron: '0 2 * * *'
-  push:
-    branches: [main]
-  workflow_dispatch:   # allow manual trigger from GitHub UI
+    - cron: '0 2 * * *'   # 02:00 UTC daily (noon AWST)
+  workflow_dispatch:        # manual trigger from GitHub Actions UI
 
 jobs:
   sync-safety:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to commit the cache file back
+      contents: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Fetch Smartraveller data
         id: fetch
         run: |
-          echo "Fetching Smartraveller destinations export…"
-          curl -sSL \
+          echo "Fetching Smartraveller destinations export..."
+          HTTP_CODE=$(curl -sSL \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5 \
             -H "Accept: application/json" \
-            -H "User-Agent: travel-guide-sync/1.0" \
-            "https://www.smartraveller.gov.au/destinations-export" \
-            -o /tmp/smartraveller-raw.json
-          echo "Fetch complete."
+            -H "User-Agent: Mozilla/5.0 (compatible; travel-guide-sync/1.0)" \
+            -w "%{http_code}" \
+            -o /tmp/smartraveller-raw.json \
+            "https://www.smartraveller.gov.au/destinations-export")
+          echo "HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Fetch failed with HTTP $HTTP_CODE"
+            cat /tmp/smartraveller-raw.json || true
+            exit 1
+          fi
+          echo "Fetch complete. File size: $(wc -c < /tmp/smartraveller-raw.json) bytes"
+
+      - name: Validate JSON
+        run: |
+          python3 -c "
+          import json, sys
+          with open('/tmp/smartraveller-raw.json') as f:
+              data = json.load(f)
+          if not isinstance(data, list):
+              print(f'ERROR: Expected a list, got {type(data).__name__}')
+              print('Raw content preview:', open('/tmp/smartraveller-raw.json').read()[:500])
+              sys.exit(1)
+          print(f'Valid JSON: {len(data)} entries')
+          "
 
       - name: Transform to keyed cache
         run: |
-          # Convert array → object keyed by country name
-          # { "Australia": {...}, "Argentina": {...}, ... }
-          python3 - <<'EOF'
-          import json, datetime
+          python3 - << 'PYEOF'
+          import json, datetime, os
 
           with open('/tmp/smartraveller-raw.json') as f:
               raw = json.load(f)
@@ -47,18 +66,23 @@ jobs:
                   cache[name] = entry
 
           cache['_fetched_at'] = datetime.datetime.utcnow().isoformat() + 'Z'
+          cache['_count'] = len(cache) - 1
 
-          with open('data/safety-cache.json', 'w') as f:
+          # Write to whichever data/ path exists (handles subfolder repo layouts)
+          candidates = ['data/safety-cache.json', 'travel-guide/data/safety-cache.json']
+          target = next((p for p in candidates if os.path.exists(os.path.dirname(p))), candidates[0])
+
+          os.makedirs(os.path.dirname(target), exist_ok=True)
+          with open(target, 'w') as f:
               json.dump(cache, f, indent=2)
 
-          print(f"Cached {len(cache) - 1} countries.")
-          EOF
+          print(f"Wrote {cache['_count']} countries to {target}")
+          PYEOF
 
       - name: Commit updated cache
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/safety-cache.json
-          # Only commit if something changed
-          git diff --staged --quiet || git commit -m "chore: update safety cache [skip ci]"
-          git push
+          git add -A "**/safety-cache.json"
+          git diff --staged --quiet && echo "No changes to commit." || \
+            git commit -m "chore: update safety cache [skip ci]" && git push
