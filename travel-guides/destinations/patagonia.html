@@ -3,13 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Patagonia | Travel Guide</title>
+  <title>Travel Guides</title>
   <link rel="stylesheet" href="../guides.css">
 </head>
 <body data-dest="patagonia">
-  <div class="page">
-    <div style="padding:60px 0;text-align:center;color:#aaa;">Loading…</div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-logo" href="../index.html">
+      <span class="icon">travel_explore</span>
+      Travel Guides
+    </a>
+    <span class="nav-sep">/</span>
+    <span class="nav-crumb" id="nav-crumb">Loading…</span>
   </div>
-  <script src="../dest.js"></script>
+</header>
+
+<div class="page">
+  <div class="error-state">
+    <span class="icon" style="font-size:32px;display:block;margin:0 auto 12px;color:var(--border-md)">travel_explore</span>
+  </div>
+</div>
+
+<script src="../dest.js"></script>
 </body>
 </html>

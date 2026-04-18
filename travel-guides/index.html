@@ -3,58 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel Guide</title>
+  <title>Travel Guides</title>
   <link rel="stylesheet" href="guides.css">
 </head>
 <body>
 
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-logo" href="index.html">
+      <span class="icon">travel_explore</span>
+      Travel Guides
+    </a>
+  </div>
+</header>
+
 <div class="page">
 
   <div class="index-hero">
-    <h1>Travel Guide</h1>
-    <p>Curated destinations for the round-the-world trip. Updated as plans evolve.</p>
+    <h1>Where to<br><span>next.</span></h1>
+    <p>Curated destination guides for the round-the-world trip. Live safety advice, climate data, and exchange rates.</p>
   </div>
 
-  <div class="dest-grid" id="dest-grid">
-    <!-- Populated by JS from the DESTINATIONS array below -->
-  </div>
+  <div class="dest-grid" id="dest-grid"></div>
 
 </div>
 
 <script>
 /**
- * Add your destinations here.
- * Each entry maps to:
- *   destinations/{id}.html   ← the page
- *   data/{id}.json           ← the content
- *   img/{id}.jpg             ← the hero image (optional)
+ * DESTINATIONS — add entries here to populate the index.
+ * Each entry links to  destinations/{id}.html  and  data/{id}.json
  */
 const DESTINATIONS = [
   {
     id:      'patagonia',
     title:   'Patagonia',
     tagline: 'Wild glaciers, jagged peaks, and vast open silence.',
-    emoji:   '🏔',
-    tags:    ['🗓 Jan–Feb', '⏱ 10–14 days', '💰 $$$', '🌿 Nature'],
+    icon:    'landscape',
+    tags:    [
+      { ic: 'calendar_month', text: 'Jan–Feb'    },
+      { ic: 'schedule',       text: '10–14 days' },
+      { ic: 'payments',       text: '$$$'         },
+      { ic: 'forest',         text: 'Nature'      },
+    ],
   },
   {
     id:      'athens',
     title:   'Athens',
     tagline: 'Ancient marble and modern chaos in equal measure.',
-    emoji:   '🏛',
-    tags:    ['🗓 Apr–Jun', '⏱ 5–7 days', '💰 $$', '🏛 History'],
+    icon:    'account_balance',
+    tags:    [
+      { ic: 'calendar_month', text: 'Apr–Jun'  },
+      { ic: 'schedule',       text: '5–7 days' },
+      { ic: 'payments',       text: '$$'        },
+      { ic: 'museum',         text: 'History'   },
+    ],
   },
-  // ── Add more destinations below ──────────────────────────────
+  // Add more destinations below — uncomment and fill in:
   // {
   //   id:      'singapore',
   //   title:   'Singapore',
-  //   tagline: 'Gleaming skyline, hawker centres, and perfect transit hub.',
-  //   emoji:   '🌆',
-  //   tags:    ['🗓 Year-round', '⏱ 3–5 days', '💰 $$$', '🌆 City'],
+  //   tagline: 'Gleaming skyline, hawker centres, and a perfect transit hub.',
+  //   icon:    'location_city',
+  //   tags:    [
+  //     { ic: 'calendar_month', text: 'Year-round' },
+  //     { ic: 'schedule',       text: '3–5 days'   },
+  //     { ic: 'payments',       text: '$$$'         },
+  //     { ic: 'apartment',      text: 'City'        },
+  //   ],
   // },
 ];
 
-// Render cards
+function mkIcon(name, cls) {
+  const s = document.createElement('span');
+  s.className = 'icon' + (cls ? ' ' + cls : '');
+  s.textContent = name;
+  return s;
+}
+
 const grid = document.getElementById('dest-grid');
 
 DESTINATIONS.forEach(d => {
@@ -62,16 +87,13 @@ DESTINATIONS.forEach(d => {
   card.className = 'dest-card';
   card.href = `destinations/${d.id}.html`;
 
-  // Image / emoji fallback
   const imgWrap = document.createElement('div');
   imgWrap.className = 'dest-card-img';
   const img = document.createElement('img');
   img.src = `img/${d.id}.jpg`;
   img.alt = d.title;
-  img.onerror = () => {
-    imgWrap.innerHTML = '';
-    imgWrap.textContent = d.emoji || '🗺';
-  };
+  img.loading = 'lazy';
+  img.onerror = () => { imgWrap.innerHTML = ''; imgWrap.append(mkIcon(d.icon || 'travel_explore')); };
   imgWrap.append(img);
 
   const body = document.createElement('div');
@@ -88,7 +110,8 @@ DESTINATIONS.forEach(d => {
   d.tags.forEach(t => {
     const span = document.createElement('span');
     span.className = 'tag';
-    span.textContent = t;
+    span.append(mkIcon(t.ic, 'icon-sm'));
+    span.append(document.createTextNode(t.text));
     tags.append(span);
   });
 
@@ -97,6 +120,5 @@ DESTINATIONS.forEach(d => {
   grid.append(card);
 });
 </script>
-
 </body>
 </html>

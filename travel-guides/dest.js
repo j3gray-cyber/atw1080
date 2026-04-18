@@ -1,21 +1,12 @@
 /**
  * dest.js — Shared rendering engine for all destination pages.
- *
- * Each destinations/XXX.html has <body data-dest="XXX">.
- * This script reads that attribute, fetches data/XXX.json,
- * and renders the full page.
- *
- * To add a new destination:
- *   1. Create data/newplace.json  (copy patagonia.json as template)
- *   2. Create destinations/newplace.html  (copy any stub, change data-dest)
- *   3. Add a card to index.html destinations array
- *   Done.
+ * Each destinations/XXX.html sets <body data-dest="XXX">.
  */
 
 (function () {
   'use strict';
 
-  // ─── Tiny DOM helper ──────────────────────────────────────────────────────
+  // ─── DOM helper ──────────────────────────────────────────────────────────
 
   function el(tag, attrs, ...children) {
     const e = document.createElement(tag);
@@ -25,64 +16,68 @@
     }
     for (const c of children.flat(Infinity)) {
       if (c == null) continue;
-      if (typeof c === 'string') e.append(document.createTextNode(c));
-      else e.append(c);
+      typeof c === 'string' ? e.append(document.createTextNode(c)) : e.append(c);
     }
     return e;
   }
 
+  function icon(name, extra) {
+    return el('span', { class: `icon${extra ? ' ' + extra : ''}` }, name);
+  }
+
   function shimmer(w, h) {
-    return el('div', { class: 'shimmer', style: `width:${w || '100%'};height:${h || '14px'};border-radius:6px;margin:4px 0;` });
+    return el('div', {
+      class: 'shimmer',
+      style: `width:${w||'100%'};height:${h||'13px'};border-radius:4px;margin:4px 0;`
+    });
   }
 
-  // ─── Safety level maps ────────────────────────────────────────────────────
+  // ─── Safety maps ─────────────────────────────────────────────────────────
 
-  const SAFETY_CLASS = { 1: 'safe', 2: 'caution', 3: 'warn', 4: 'danger' };
-  const SAFETY_ICON  = { 1: '✓', 2: '!', 3: '⚠', 4: '⛔' };
+  const SAFETY_CLASS = { 1:'safe', 2:'caution', 3:'warn', 4:'danger' };
+  const SAFETY_ICON  = { 1:'check_circle', 2:'info', 3:'warning', 4:'dangerous' };
 
-  // ─── Section / list helpers ───────────────────────────────────────────────
+  // ─── Builders ────────────────────────────────────────────────────────────
 
-  function section(title, ...children) {
-    return el('div', { class: 'section' },
-      el('h2', {}, title),
-      ...children
-    );
+  function sectionTitle(iconName, label) {
+    return el('div', { class: 'section-title' }, icon(iconName), label);
   }
 
-  function ul(items) {
-    return el('ul', { class: 'list' },
-      ...items.map(i => el('li', {}, i))
-    );
+  function section(iconName, label, ...children) {
+    return el('div', { class: 'section' }, sectionTitle(iconName, label), ...children);
   }
 
-  // ─── Main render ──────────────────────────────────────────────────────────
+  function cardList(items) {
+    return el('ul', { class: 'list' }, ...items.map(i => el('li', {}, i)));
+  }
+
+  function panelTitle(iconName, label) {
+    return el('div', { class: 'panel-title' }, icon(iconName), label);
+  }
+
+  // ─── Main render ─────────────────────────────────────────────────────────
 
   function render(d) {
-    document.title = `${d.title} | Travel Guide`;
+    document.title = `${d.title} | Travel Guides`;
+
+    // Update header breadcrumb
+    const crumb = document.getElementById('nav-crumb');
+    if (crumb) crumb.textContent = d.title;
 
     const page = document.querySelector('.page');
     page.innerHTML = '';
 
-    // Nav breadcrumb
-    page.append(
-      el('nav', { class: 'site-nav' },
-        el('a', { href: '../index.html' }, '✦ Travel Guide'),
-        el('span', { class: 'sep' }, '›'),
-        el('span', {}, d.title),
-      )
-    );
-
-    // Hero image
+    // Hero
     const hero = el('div', { class: 'hero' });
     if (d.hero_image) {
-      const img = el('img', { src: d.hero_image, alt: d.title });
+      const img = el('img', { src: d.hero_image, alt: d.title, loading: 'eager' });
       img.onerror = () => {
         hero.innerHTML = '';
-        hero.append(el('div', { class: 'hero-placeholder' }, '🗺'));
+        hero.append(el('div', { class: 'hero-placeholder' }, icon('landscape', 'icon-xl')));
       };
       hero.append(img);
     } else {
-      hero.append(el('div', { class: 'hero-placeholder' }, '🗺'));
+      hero.append(el('div', { class: 'hero-placeholder' }, icon('landscape', 'icon-xl')));
     }
     page.append(hero);
 
@@ -93,47 +88,59 @@
     );
 
     // Snapshot pills
-    page.append(el('div', { class: 'snapshot' }, ...[
-      `🗓 Best Time: ${d.snapshot.best_time}`,
-      `⏱ ${d.snapshot.duration}`,
-      `💰 ${d.snapshot.cost}`,
-      `🌿 ${d.snapshot.type}`,
-      `⚡ ${d.snapshot.intensity}`,
-    ].map(t => el('div', { class: 'tag' }, t))));
+    const snapItems = [
+      { ic: 'calendar_month', text: `Best time: ${d.snapshot.best_time}` },
+      { ic: 'schedule',       text: d.snapshot.duration },
+      { ic: 'payments',       text: d.snapshot.cost },
+      { ic: 'category',       text: d.snapshot.type },
+      { ic: 'fitness_center', text: d.snapshot.intensity },
+    ];
+    page.append(el('div', { class: 'snapshot' },
+      ...snapItems.map(s => el('div', { class: 'tag' }, icon(s.ic, 'icon-sm'), s.text))
+    ));
 
-    // Quick facts bar
-    page.append(el('div', { class: 'quick-facts' }, ...[
-      `🌍 ${d.quick_facts.timezone}`,
-      `🛂 ${d.quick_facts.visa}`,
-      `🗣 ${d.quick_facts.language}`,
-      `💳 ${d.quick_facts.payments}`,
-    ].map(t => el('div', {}, t))));
+    // Quick facts
+    const facts = [
+      { ic: 'schedule',     label: 'Timezone',  val: d.quick_facts.timezone  },
+      { ic: 'travel_explore', label: 'Visa',    val: d.quick_facts.visa      },
+      { ic: 'record_voice_over', label: 'Language', val: d.quick_facts.language },
+      { ic: 'credit_card',  label: 'Payments',  val: d.quick_facts.payments  },
+    ];
+    page.append(el('div', { class: 'quick-facts' },
+      ...facts.map(f =>
+        el('div', { class: 'qf-item' },
+          el('div', { class: 'qf-icon' }, icon(f.ic)),
+          el('div', {},
+            el('span', { class: 'qf-label' }, f.label),
+            el('span', { class: 'qf-value' }, f.val),
+          )
+        )
+      )
+    ));
 
-    // ── Sidebar panels (rendered now, populated async) ──
-    const safetyPanelEl  = renderSafetyPanel();
-    const weatherPanelEl = renderWeatherPanel();
-    const ratePanelEl    = renderRatePanel(d);
+    // Sidebar panels (rendered now, data filled async)
+    const safetyPanelEl  = makeSafetyPanel();
+    const weatherPanelEl = makeWeatherPanel();
+    const ratePanelEl    = makeRatePanel(d);
 
-    // ── Two-column grid ──
+    // Two-column grid
     page.append(
       el('div', { class: 'grid' },
 
-        // LEFT
         el('div', {},
-          section('Why Go', ul(d.why_go)),
-          section('Essential Experiences', ul(d.essential_experiences)),
+          section('star',            'Why go',              cardList(d.why_go)),
+          section('hotel_class',     'Essential experiences', cardList(d.essential_experiences)),
           renderSeasonality(d),
-          section('Food & Drink', ul(d.food_and_drink)),
-          section('Logistics', ul(d.logistics)),
-          section('Friction Factors', ul(d.friction_factors)),
-          section('Tips & Watchouts', ul(d.tips)),
+          section('restaurant',      'Food & drink',        cardList(d.food_and_drink)),
+          section('directions',      'Logistics',           cardList(d.logistics)),
+          section('report',          'Friction factors',    cardList(d.friction_factors)),
+          section('tips_and_updates','Tips & watchouts',    cardList(d.tips)),
           renderItinerary(d),
         ),
 
-        // RIGHT
         el('div', { class: 'sidebar' },
           safetyPanelEl,
-          renderWaterPanel(d.water_safety),
+          makeWaterPanel(d.water_safety),
           weatherPanelEl,
           ratePanelEl,
         ),
@@ -143,18 +150,18 @@
     // Verdict
     page.append(
       el('div', { class: 'verdict' },
-        el('strong', {}, 'Verdict'),
+        el('div', { class: 'verdict-label' }, icon('verified', 'icon-sm'), 'Verdict'),
         el('p', {}, d.verdict),
       )
     );
 
-    // Kick off async data loads
+    // Async panel data
     fetchSafety(d, safetyPanelEl);
     fetchWeather(d, weatherPanelEl);
     fetchRate(d, ratePanelEl);
   }
 
-  // ─── Seasonality ──────────────────────────────────────────────────────────
+  // ─── Seasonality ─────────────────────────────────────────────────────────
 
   function renderSeasonality(d) {
     const months = el('div', { class: 'months' },
@@ -162,67 +169,80 @@
         el('span', { class: s }, m)
       )
     );
+    const legend = el('div', { class: 'season-legend' },
+      ...[
+        { cls: 'good', dot: '#86efac', label: 'Good' },
+        { cls: 'ok',   dot: '#fde047', label: 'OK'   },
+        { cls: 'bad',  dot: '#fca5a5', label: 'Avoid'},
+      ].map(({ dot, label }) =>
+        el('span', {},
+          el('span', { class: 's-dot', style: `background:${dot}` }),
+          label,
+        )
+      )
+    );
     const note = el('p', { class: 'season-note' }, d.seasonality_note);
-    return section('When to Go', months, note);
+    const wrap = el('div', { class: 'months-wrap' }, months, legend, note);
+    return section('calendar_today', 'When to go', wrap);
   }
 
-  // ─── Itinerary ────────────────────────────────────────────────────────────
+  // ─── Itinerary ───────────────────────────────────────────────────────────
 
   function renderItinerary(d) {
     const list = el('ul', { class: 'itinerary-list' },
       ...d.itinerary.map(item =>
         el('li', {},
-          el('span', { class: 'day-num' }, `Day ${item.day}`),
-          el('span', {}, item.label),
+          el('span', { class: 'day-num' }, `D${item.day}`),
+          el('span', { class: 'day-label' }, item.label),
         )
       )
     );
-    return section('Itinerary Ideas', list);
+    return section('route', 'Itinerary ideas', list);
   }
 
-  // ─── Static sidebar panels ────────────────────────────────────────────────
+  // ─── Sidebar panels ──────────────────────────────────────────────────────
 
-  function renderSafetyPanel() {
+  function makeSafetyPanel() {
     return el('div', { class: 'panel caution', id: 'safety-panel' },
-      el('h3', {}, 'Safety advice'),
-      shimmer('60%', '16px'),
+      panelTitle('shield', 'Safety advice'),
+      shimmer('65%', '15px'),
       shimmer('100%', '11px'),
-      shimmer('80%',  '11px'),
+      shimmer('75%', '11px'),
     );
   }
 
-  function renderWaterPanel(w) {
-    const cls  = { safe: 'safe', caution: 'caution', unsafe: 'danger' }[w.status] || 'caution';
-    const icon = { safe: '💧', caution: '⚠️', unsafe: '🚱' }[w.status] || '💧';
+  function makeWaterPanel(w) {
+    const cls     = { safe:'safe', caution:'caution', unsafe:'danger' }[w.status] || 'caution';
+    const iconName = { safe:'water_drop', caution:'water_drop', unsafe:'do_not_disturb_on' }[w.status] || 'water_drop';
     return el('div', { class: `panel ${cls}` },
-      el('h3', {}, 'Water safety'),
-      el('div', { class: 'badge' }, `${icon} ${w.label}`),
+      panelTitle(iconName, 'Water safety'),
+      el('div', { class: 'badge' }, w.label),
       el('p', {}, w.note),
     );
   }
 
-  function renderWeatherPanel() {
+  function makeWeatherPanel() {
     return el('div', { class: 'panel', id: 'weather-panel' },
-      el('h3', {}, 'Climate'),
-      shimmer('70%', '11px'),
-      shimmer('100%', '11px'),
+      panelTitle('thermostat', 'Climate'),
+      shimmer('80%', '11px'),
+      shimmer('100%', '60px'),
     );
   }
 
-  function renderRatePanel(d) {
+  function makeRatePanel(d) {
     return el('div', { class: 'panel', id: 'rate-panel' },
-      el('h3', {}, `Exchange rate (AUD → ${d.currency.code})`),
-      shimmer('60%', '11px'),
+      panelTitle('currency_exchange', `AUD → ${d.currency.code}`),
+      shimmer('55%', '11px'),
     );
   }
 
-  // ─── Async: Smartraveller safety ──────────────────────────────────────────
+  // ─── Async: Smartraveller ─────────────────────────────────────────────────
 
   async function fetchSafety(d, panel) {
     try {
       let country;
 
-      // 1. Try nightly-cached file (written by GitHub Actions)
+      // 1. Try nightly cache (written by GitHub Action)
       try {
         const r = await fetch('../data/safety-cache.json');
         if (r.ok) {
@@ -246,10 +266,11 @@
       panel.className = `panel ${SAFETY_CLASS[level] || 'caution'}`;
       panel.innerHTML = '';
       panel.append(
-        el('h3', {}, 'Safety advice'),
-        el('div', { class: 'badge' }, `${SAFETY_ICON[level]} Level ${level}: ${country.advice_text}`),
+        panelTitle(SAFETY_ICON[level], 'Safety advice'),
+        el('div', { class: 'badge' }, `Level ${level}: ${country.advice_text}`),
         el('p', {}, `Updated ${country.last_updated}`),
-        el('a', { href: country.url, target: '_blank', rel: 'noopener' }, 'Full advice on Smartraveller →'),
+        el('a', { href: country.url, target: '_blank', rel: 'noopener' },
+          'Full Smartraveller advice', icon('open_in_new', 'icon-sm')),
       );
 
     } catch (_) {
@@ -257,18 +278,18 @@
       panel.className = 'panel caution';
       panel.innerHTML = '';
       panel.append(
-        el('h3', {}, 'Safety advice'),
-        el('div', { class: 'badge' }, '⚠ Check before travel'),
+        panelTitle('warning', 'Safety advice'),
+        el('div', { class: 'badge' }, 'Check before travel'),
         el('p', {}, 'Live advice unavailable.'),
         el('a', {
           href: `https://www.smartraveller.gov.au/destinations/${slug}`,
-          target: '_blank', rel: 'noopener'
-        }, 'Check Smartraveller →'),
+          target: '_blank', rel: 'noopener',
+        }, 'Smartraveller', icon('open_in_new', 'icon-sm')),
       );
     }
   }
 
-  // ─── Async: Open-Meteo climate normals ───────────────────────────────────
+  // ─── Async: Open-Meteo climate ────────────────────────────────────────────
 
   async function fetchWeather(d, panel) {
     if (!d.climate) return;
@@ -281,77 +302,69 @@
         '&models=EC_Earth3P_HR',
       ].join('');
 
-      const res  = await fetch(url);
-      const data = await res.json();
-      if (!data.monthly) throw new Error('No climate data');
+      const data = await fetch(url).then(r => r.json());
+      if (!data.monthly) throw new Error('No data');
 
-      const MONTHS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const hi      = data.monthly.temperature_2m_max;
-      const lo      = data.monthly.temperature_2m_min;
-      const rain    = data.monthly.precipitation_sum;
-
-      // Four quarterly columns
+      const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const hi  = data.monthly.temperature_2m_max;
+      const lo  = data.monthly.temperature_2m_min;
+      const rn  = data.monthly.precipitation_sum;
       const keys = [0, 3, 6, 9];
+
       const grid = el('div', { class: 'weather-grid' },
         ...keys.map(i =>
           el('div', { class: 'weather-month' },
-            el('div', { class: 'wm-name' }, MONTHS[i]),
+            el('div', { class: 'wm-name' }, MO[i]),
             el('div', { class: 'wm-hi' },   `${Math.round(hi[i])}°`),
             el('div', { class: 'wm-lo' },   `${Math.round(lo[i])}° lo`),
-            el('div', { class: 'wm-rain' }, `${Math.round(rain[i])}mm`),
+            el('div', { class: 'wm-rain' }, icon('water_drop', 'icon-sm'), `${Math.round(rn[i])}mm`),
           )
         )
       );
 
       panel.innerHTML = '';
       panel.append(
-        el('h3', {}, 'Climate (monthly avg)'),
+        panelTitle('thermostat', 'Climate'),
         grid,
-        el('p', { style: 'margin-top:8px;font-size:0.78rem;' }, '30-yr averages · hi / lo / rainfall'),
+        el('p', { style: 'margin-top:8px;font-size:0.74rem;' }, '30-yr averages · Jan / Apr / Jul / Oct'),
       );
-
     } catch (_) {
       panel.innerHTML = '';
-      panel.append(
-        el('h3', {}, 'Climate'),
-        el('p', {}, 'Weather data unavailable.'),
-      );
+      panel.append(panelTitle('thermostat', 'Climate'), el('p', {}, 'Data unavailable.'));
     }
   }
 
-  // ─── Async: Frankfurter exchange rates ───────────────────────────────────
+  // ─── Async: Frankfurter exchange rate ─────────────────────────────────────
 
   async function fetchRate(d, panel) {
     const code = d.currency.code;
     if (code === 'AUD') {
       panel.innerHTML = '';
-      panel.append(el('h3', {}, 'Currency'), el('p', {}, 'Local currency is AUD.'));
+      panel.append(panelTitle('currency_exchange', 'Currency'), el('p', {}, 'Local currency is AUD.'));
       return;
     }
     try {
-      const res  = await fetch(`https://api.frankfurter.app/latest?from=AUD&to=${code}`);
-      const data = await res.json();
+      const data = await fetch(`https://api.frankfurter.app/latest?from=AUD&to=${code}`).then(r => r.json());
       const rate = data.rates[code];
-      if (!rate) throw new Error('No rate');
+      if (!rate) throw new Error();
 
       panel.innerHTML = '';
       panel.append(
-        el('h3', {}, 'Exchange rate'),
-        el('div', { class: 'rate-display' }, `1 AUD = ${rate.toFixed(2)} ${code}`),
-        el('div', { class: 'rate-sub' }, `${d.currency.label} · live rate`),
+        panelTitle('currency_exchange', `AUD → ${code}`),
+        el('div', { class: 'rate-display' }, `${rate.toFixed(2)} ${code}`),
+        el('div', { class: 'rate-sub' }, `per 1 AUD · ${d.currency.label} · live`),
         el('p', { style: 'margin-top:6px;font-size:0.82rem;' },
           `100 AUD ≈ ${(rate * 100).toFixed(0)} ${code}`),
       );
-
     } catch (_) {
       panel.innerHTML = '';
       panel.append(
-        el('h3', {}, 'Exchange rate'),
-        el('p', {}, `Could not load ${code} rate.`),
+        panelTitle('currency_exchange', `AUD → ${code}`),
+        el('p', {}, `Rate unavailable.`),
         el('a', {
           href: `https://www.xe.com/currencyconverter/convert/?From=AUD&To=${code}`,
           target: '_blank', rel: 'noopener',
-        }, `Check on XE.com →`),
+        }, 'Check on XE.com', icon('open_in_new', 'icon-sm')),
       );
     }
   }
@@ -361,11 +374,14 @@
   async function boot() {
     const destId = document.body.getAttribute('data-dest');
     if (!destId) {
-      document.querySelector('.page').innerHTML =
-        '<div class="error-state"><h2>No destination set</h2><p><a href="../index.html">← All destinations</a></p></div>';
+      document.querySelector('.page').innerHTML = `
+        <div class="error-state">
+          <span class="icon icon-xl">travel_explore</span>
+          <h2>No destination set</h2>
+          <p><a href="../index.html">← All destinations</a></p>
+        </div>`;
       return;
     }
-
     try {
       const res = await fetch(`../data/${destId}.json`);
       if (!res.ok) throw new Error(res.status);
@@ -373,6 +389,7 @@
     } catch (e) {
       document.querySelector('.page').innerHTML = `
         <div class="error-state">
+          <span class="icon icon-xl">search_off</span>
           <h2>Destination not found</h2>
           <p>Could not load <code>${destId}</code>. <a href="../index.html">← All destinations</a></p>
         </div>`;
