@@ -1,0 +1,181 @@
+name: Sync cost of living data
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 3 AM UTC, after safety sync at 2 AM
+  workflow_dispatch:
+
+jobs:
+  sync-cost:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml --break-system-packages
+
+      - name: Scrape and cache Numbeo data
+        run: |
+          python3 << 'PYEOF'
+          import json, sys, os, datetime, time
+          import requests
+          from bs4 import BeautifulSoup
+
+          HEADERS = {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'en-US,en;q=0.9',
+          }
+
+          # ── 1. Scrape country index rankings ──────────────────────────────
+          print("=== Fetching Numbeo country rankings ===")
+          url = 'https://www.numbeo.com/cost-of-living/rankings_by_country.jsp'
+          r = requests.get(url, headers=HEADERS, timeout=30)
+          print(f"Status: {r.status_code}")
+
+          soup = BeautifulSoup(r.text, 'lxml')
+          table = soup.find('table', id='t2')
+
+          if not table:
+              print("ERROR: Could not find rankings table. Page structure may have changed.")
+              sys.exit(0)
+
+          country_indices = {}
+          for row in table.find('tbody').find_all('tr'):
+              cells = row.find_all('td')
+              if len(cells) < 6:
+                  continue
+              try:
+                  name = cells[1].get_text(strip=True)
+                  country_indices[name] = {
+                      'col': float(cells[2].get_text(strip=True)),   # Cost of Living Index
+                      'rent': float(cells[3].get_text(strip=True)),  # Rent Index
+                      'grocery': float(cells[5].get_text(strip=True)), # Groceries Index
+                      'restaurant': float(cells[6].get_text(strip=True)), # Restaurant Price Index
+                  }
+              except (ValueError, IndexError):
+                  continue
+
+          print(f"Parsed {len(country_indices)} countries")
+
+          australia = country_indices.get('Australia')
+          if not australia:
+              print("ERROR: Australia not found in rankings. Aborting.")
+              sys.exit(0)
+
+          print(f"Australia COL index: {australia['col']}")
+
+          # ── 2. Read destination JSONs to get city slugs ───────────────────
+          # Look in the two possible data directories
+          data_dirs = ['data', 'travel-guides/data']
+          data_dir = None
+          for d in data_dirs:
+              if os.path.isdir(d):
+                  data_dir = d
+                  break
+
+          if not data_dir:
+              print("ERROR: Could not find data/ directory")
+              sys.exit(0)
+
+          dest_files = [f for f in os.listdir(data_dir)
+                        if f.endswith('.json') and not f.startswith('_') and '-cache' not in f]
+          print(f"Found destination files: {dest_files}")
+
+          # ── 3. For each destination, scrape Numbeo city prices ────────────
+          # Item IDs we want:
+          #   1  = Meal at inexpensive restaurant
+          #   9  = Cappuccino
+          #   18 = Local transport monthly pass
+          # (item IDs are stable in Numbeo's URL params)
+          ITEM_IDS = {
+              1:  ('Meal (inexpensive restaurant)', 'restaurant'),
+              9:  ('Cappuccino',                   'coffee'),
+              18: ('Monthly transport pass',        'transport'),
+          }
+
+          city_prices_cache = {}
+
+          for fname in dest_files:
+              fpath = os.path.join(data_dir, fname)
+              with open(fpath) as f:
+                  dest = json.load(f)
+
+              country_name = dest.get('numbeo_country', dest.get('country', ''))
+              numbeo_city  = dest.get('numbeo_city', '')
+
+              if not numbeo_city:
+                  print(f"  {fname}: no numbeo_city set — skipping city prices")
+                  continue
+
+              print(f"  Fetching city prices for {numbeo_city} ({country_name})...")
+              time.sleep(1.5)  # be polite
+
+              city_url = f'https://www.numbeo.com/cost-of-living/in/{numbeo_city}'
+              try:
+                  rc = requests.get(city_url, headers=HEADERS, timeout=30)
+                  cs = BeautifulSoup(rc.text, 'lxml')
+
+                  prices = {}
+                  for row in cs.find_all('tr', class_='clickable-row'):
+                      cells = row.find_all('td')
+                      if len(cells) < 2:
+                          continue
+                      label = cells[0].get_text(strip=True)
+                      price_text = cells[1].get_text(strip=True)
+                      # Extract the number from strings like "15.00 $" or "A$18.50"
+                      import re
+                      nums = re.findall(r'[\d,]+\.?\d*', price_text.replace(',', ''))
+                      if not nums:
+                          continue
+                      val = float(nums[0])
+
+                      if 'Meal' in label and 'Inexpensive' in label:
+                          prices['meal'] = {'label': 'Cheap meal out', 'value': price_text}
+                      elif 'Cappuccino' in label:
+                          prices['coffee'] = {'label': 'Cappuccino', 'value': price_text}
+                      elif 'Monthly Pass' in label or 'Monthly Transport' in label:
+                          prices['transport'] = {'label': 'Monthly transport', 'value': price_text}
+
+                  city_prices_cache[dest['id']] = prices
+                  print(f"    Got {len(prices)} price points")
+
+              except Exception as e:
+                  print(f"    WARN: Could not fetch city prices for {numbeo_city}: {e}")
+                  city_prices_cache[dest['id']] = {}
+
+          # ── 4. Build the final cache ──────────────────────────────────────
+          cache = {
+              '_fetched_at': datetime.datetime.utcnow().isoformat() + 'Z',
+              '_australia_col': australia['col'],
+              '_australia_rent': australia['rent'],
+              '_australia_grocery': australia['grocery'],
+              '_australia_restaurant': australia['restaurant'],
+              'countries': country_indices,
+              'city_prices': city_prices_cache,
+          }
+
+          out_path = os.path.join(data_dir, 'cost-cache.json')
+          with open(out_path, 'w') as f:
+              json.dump(cache, f, indent=2)
+
+          print(f"Wrote cache to {out_path}")
+          print(f"  Countries indexed: {len(country_indices)}")
+          print(f"  City price sets: {len(city_prices_cache)}")
+          PYEOF
+
+      - name: Commit updated cache
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A "**/cost-cache.json"
+          if git diff --staged --quiet; then
+            echo "No changes — cache is up to date."
+          else
+            git commit -m "chore: update cost of living cache [skip ci]"
+            git push
+            echo "Cache updated and pushed."
+          fi

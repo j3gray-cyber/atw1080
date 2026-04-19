@@ -5,6 +5,8 @@
   "hero_image": "../img/athens.jpg",
   "country": "Greece",
   "smartraveller_country": "Greece",
+  "numbeo_country": "Greece",
+  "numbeo_city": "Athens",
 
   "snapshot": {
     "best_time": "Apr–Jun, Sep–Oct",
@@ -31,7 +33,7 @@
     "Acropolis and Parthenon at golden hour",
     "National Archaeological Museum",
     "Wandering Monastiraki and Plaka neighbourhoods",
-    "Day trip to Cape Sounion or the Saronic Islands or anywhere islandy"
+    "Day trip to Cape Sounion or the Saronic Islands"
   ],
 
   "seasonality": {

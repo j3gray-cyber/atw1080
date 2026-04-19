@@ -155,6 +155,7 @@
     fetchSafety(d, safetyPanelEl);
     fetchWeather(d, weatherPanelEl);
     fetchRate(d, ratePanelEl);
+    fetchCost(d, document.getElementById('cost-panel'));
   }
 
   // ─── Seasonality ─────────────────────────────────────────────────────────
@@ -232,27 +233,114 @@
     );
   }
 
-  // Cost of living — static panel linking to Expatistan Perth vs destination.
-  // Expatistan has no public API, but their comparison URLs are stable and
-  // readable. Add "expatistan_city" to a destination's JSON to override the
-  // slug if the auto-generated one doesn't match (e.g. "buenos-aires" not "patagonia").
+  // Cost of living — reads from nightly-cached Numbeo data.
+  // Headline % vs Australia derived from country-level Cost of Living Index.
+  // Sub-rows show groceries, eating out, and rent differentials.
+  // City price points (meal, coffee, transport) added if numbeo_city is set in JSON.
   function makeCostPanel(d) {
-    const destSlug = (d.expatistan_city || d.title)
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-    const url = `https://www.expatistan.com/cost-of-living/comparison/perth/${destSlug}`;
-
-    return el('div', { class: 'panel' },
-      panelTitle('shopping_cart', 'Cost of living'),
-      el('p', { style: 'font-size:0.81rem;color:var(--muted);margin-bottom:8px;' },
-        `How ${d.title} compares to Perth — food, rent, transport & more.`),
-      el('a', { href: url, target: '_blank', rel: 'noopener' },
-        icon('open_in_new', 'icon-sm'),
-        ` Perth vs ${d.title}`,
-      ),
+    return el('div', { class: 'panel', id: 'cost-panel' },
+      panelTitle('shopping_cart', 'Cost of living vs Australia'),
+      shimmer('70%', '20px'),
+      shimmer('90%', '11px'),
+      shimmer('75%', '11px'),
+      shimmer('80%', '11px'),
     );
+  }
+
+  async function fetchCost(d, panel) {
+    try {
+      const r = await fetch('../data/cost-cache.json');
+      if (!r.ok) throw new Error('Cache fetch failed');
+      const cache = await r.json();
+      if (!cache._fetched_at) throw new Error('Cache not yet populated');
+
+      const countryName = d.numbeo_country || d.country;
+      const dest = cache.countries && cache.countries[countryName];
+      if (!dest) throw new Error(`${countryName} not in cache`);
+
+      const ausCol  = cache._australia_col;
+      const destCol = dest.col;
+      const pctDiff = Math.round(((destCol - ausCol) / ausCol) * 100);
+      const cheaper = pctDiff < 0;
+      const absPct  = Math.abs(pctDiff);
+
+      const headlineText = cheaper
+        ? `~${absPct}% cheaper than Australia`
+        : pctDiff === 0 ? 'Similar cost to Australia'
+        : `~${absPct}% pricier than Australia`;
+      const headlineIcon = cheaper ? 'trending_down' : 'trending_up';
+      const headlineCls  = cheaper ? 'cost-cheaper' : 'cost-pricier';
+
+      // Sub-index comparisons (% diff from Australia)
+      const subs = [
+        { label: 'Groceries',  dest: dest.grocery,    aus: cache._australia_grocery    },
+        { label: 'Eating out', dest: dest.restaurant, aus: cache._australia_restaurant },
+        { label: 'Rent',       dest: dest.rent,       aus: cache._australia_rent       },
+      ].map(s => ({
+        label: s.label,
+        pct: Math.round(((s.dest - s.aus) / s.aus) * 100),
+      }));
+
+      // City-level price points from cache (optional)
+      const cityPrices = (cache.city_prices && cache.city_prices[d.id]) || {};
+      const pricePoints = ['meal', 'coffee', 'transport'].map(k => cityPrices[k]).filter(Boolean);
+
+      panel.innerHTML = '';
+      panel.append(panelTitle('shopping_cart', 'Cost of living vs Australia'));
+
+      // Headline badge
+      panel.append(
+        el('div', { class: `cost-headline ${headlineCls}` },
+          icon(headlineIcon, 'icon-sm'), ` ${headlineText}`,
+        )
+      );
+
+      // Sub-index breakdown
+      const subWrap = el('div', { class: 'cost-subs' });
+      subs.forEach(({ label, pct }) => {
+        const sign = pct > 0 ? '+' : '';
+        const cls  = pct < 0 ? 'cost-down' : pct > 0 ? 'cost-up' : 'cost-flat';
+        subWrap.append(
+          el('div', { class: 'cost-sub-row' },
+            el('span', { class: 'cost-sub-label' }, label),
+            el('span', { class: `cost-sub-val ${cls}` }, `${sign}${pct}%`),
+          )
+        );
+      });
+      panel.append(subWrap);
+
+      // Price point samples
+      if (pricePoints.length > 0) {
+        panel.append(el('div', { class: 'cost-prices-title' }, 'Sample prices (local currency)'));
+        pricePoints.forEach(p => {
+          panel.append(
+            el('div', { class: 'cost-sub-row' },
+              el('span', { class: 'cost-sub-label' }, p.label),
+              el('span', { class: 'cost-price-val' }, p.value),
+            )
+          );
+        });
+      }
+
+      const numbeoUrl = d.numbeo_city
+        ? `https://www.numbeo.com/cost-of-living/in/${d.numbeo_city}`
+        : `https://www.numbeo.com/cost-of-living/country_result.jsp?country=${encodeURIComponent(countryName)}`;
+      panel.append(
+        el('a', { href: numbeoUrl, target: '_blank', rel: 'noopener', style: 'margin-top:8px;display:inline-flex;' },
+          'Full breakdown on Numbeo', icon('open_in_new', 'icon-sm')),
+      );
+
+    } catch (_) {
+      const countryName = d.numbeo_country || d.country;
+      const numbeoUrl = `https://www.numbeo.com/cost-of-living/country_result.jsp?country=${encodeURIComponent(countryName)}`;
+      panel.innerHTML = '';
+      panel.append(
+        panelTitle('shopping_cart', 'Cost of living'),
+        el('p', { style: 'font-size:0.81rem;color:var(--muted);margin-bottom:6px;' }, 'Data not yet synced.'),
+        el('a', { href: numbeoUrl, target: '_blank', rel: 'noopener' },
+          `${countryName} on Numbeo`, icon('open_in_new', 'icon-sm')),
+      );
+    }
   }
 
   // ─── Async: Smartraveller ─────────────────────────────────────────────────

@@ -467,3 +467,48 @@ img { display: block; }
   font-size: .71rem;
   padding: 2px 8px 2px 6px;
 }
+/* ─── Cost of living panel ───────────────────────────────────── */
+.cost-headline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-bottom: 10px;
+}
+.cost-headline .icon { font-size: 15px; opacity: 1; }
+.cost-cheaper { background: var(--safe-bg); color: var(--safe-text); }
+.cost-pricier { background: var(--warn-bg); color: var(--warn-text); }
+ 
+.cost-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.cost-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.cost-sub-row:last-child { border-bottom: none; }
+.cost-sub-label { color: var(--muted); }
+.cost-sub-val   { font-weight: 600; font-size: 0.84rem; }
+.cost-down  { color: var(--safe-text); }
+.cost-up    { color: var(--warn-text); }
+.cost-flat  { color: var(--slate-500); }
+.cost-price-val { font-weight: 500; color: var(--text); }
+ 
+.cost-prices-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin: 8px 0 2px;
+}

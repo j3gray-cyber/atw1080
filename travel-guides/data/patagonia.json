@@ -5,6 +5,8 @@
   "hero_image": "../img/patagonia.jpg",
   "country": "Argentina",
   "smartraveller_country": "Argentina",
+  "numbeo_country": "Argentina",
+  "numbeo_city": "Buenos-Aires",
 
   "snapshot": {
     "best_time": "Jan–Feb",
