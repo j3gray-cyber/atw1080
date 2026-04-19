@@ -606,62 +606,61 @@
 
     // ── Cost of living ───────────────────────────────────────────
     async function fetchCost(countryName) {
-    const card = document.getElementById("card-cost");
+      const card = document.getElementById("card-cost");
 
-    try {
-      const r = await fetch("travel-guides/data/cost-cache.json");
-      if (!r.ok) throw new Error("Cache fetch failed");
+      try {
+        const r = await fetch("travel-guides/data/cost-cache.json");
+        if (!r.ok) throw new Error("Cache fetch failed");
 
-      const cache = await r.json();
-      if (!cache._australia_col) throw new Error("Invalid cache format");
+        const cache = await r.json();
+        if (!cache._australia_col) throw new Error("Invalid cache format");
 
-      const dest = cache.countries && cache.countries[countryName];
-      if (!dest) throw new Error("Country not found");
+        const dest = cache.countries && cache.countries[countryName];
+        if (!dest) throw new Error("Country not found");
 
-      const ausCol  = cache._australia_col;
-      const destCol = dest.col;
+        const ausCol  = cache._australia_col;
+        const destCol = dest.col;
 
-      const pctDiff = Math.round(((destCol - ausCol) / ausCol) * 100);
-      const cheaper = pctDiff < 0;
-      const absPct  = Math.abs(pctDiff);
+        const pctDiff = Math.round(((destCol - ausCol) / ausCol) * 100);
+        const cheaper = pctDiff < 0;
+        const absPct  = Math.abs(pctDiff);
 
-      const headline = cheaper
-        ? `~${absPct}% cheaper than Australia`
-        : pctDiff === 0
-        ? "Similar cost to Australia"
-        : `~${absPct}% pricier than Australia`;
+        const headline = cheaper
+          ? `~${absPct}% cheaper than Australia`
+          : pctDiff === 0
+          ? "Similar cost to Australia"
+          : `~${absPct}% pricier than Australia`;
 
-      const subs = [
-        { label: "Groceries",  val: Math.round(((dest.grocery - cache._australia_grocery) / cache._australia_grocery) * 100) },
-        { label: "Eating out", val: Math.round(((dest.restaurant - cache._australia_restaurant) / cache._australia_restaurant) * 100) },
-        { label: "Rent",       val: Math.round(((dest.rent - cache._australia_rent) / cache._australia_rent) * 100) }
-      ];
+        const subs = [
+          { label: "Groceries",  val: Math.round(((dest.grocery - cache._australia_grocery) / cache._australia_grocery) * 100) },
+          { label: "Eating out", val: Math.round(((dest.restaurant - cache._australia_restaurant) / cache._australia_restaurant) * 100) },
+          { label: "Rent",       val: Math.round(((dest.rent - cache._australia_rent) / cache._australia_rent) * 100) }
+        ];
 
-      const rows = subs.map(s => `
-        <div class="cost-row">
-          <span class="cost-label">${s.label}</span>
-          <span class="cost-value">${s.val > 0 ? "+" : ""}${s.val}%</span>
-        </div>
-      `).join("");
+        const rows = subs.map(s => `
+          <div class="cost-row">
+            <span class="cost-label">${s.label}</span>
+            <span class="cost-value">${s.val > 0 ? "+" : ""}${s.val}%</span>
+          </div>
+        `).join("");
 
-      card.innerHTML = `
-        <div class="info-card-label">Cost of Living</div>
-        <div style="font-weight:600;margin-bottom:6px">${headline}</div>
-        ${rows}
-      `;
+        card.innerHTML = `
+          <div class="info-card-label">Cost of Living</div>
+          <div style="font-weight:600;margin-bottom:6px">${headline}</div>
+          ${rows}
+        `;
 
-    } catch (e) {
-      const slug = countryName.toLowerCase().replace(/ /g, "-");
-      card.innerHTML = `
-        <div class="info-card-label">Cost of Living</div>
-        <p>Data unavailable.</p>
-        <a href="https://www.numbeo.com/cost-of-living/country_result.jsp?country=${encodeURIComponent(countryName)}" target="_blank">
-          View on Numbeo →
-        </a>
-      `;
+      } catch (e) {
+        const slug = countryName.toLowerCase().replace(/ /g, "-");
+        card.innerHTML = `
+          <div class="info-card-label">Cost of Living</div>
+          <p>Data unavailable.</p>
+          <a href="https://www.numbeo.com/cost-of-living/country_result.jsp?country=${encodeURIComponent(countryName)}" target="_blank">
+            View on Numbeo →
+          </a>
+        `;
+      }
     }
-  }
-  }
 
     window.onload   = drawRoutes;
     window.onresize = drawRoutes;
