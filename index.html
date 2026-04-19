@@ -3,386 +3,632 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stylised Route Map (Clean Joins)</title>
+  <title>Stylised Route Map</title>
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0px; text-align:center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #111; overflow-x: hidden; }
 
-    .controls { margin: -40px; }
-    label { margin: 0 10px; cursor: pointer; }
+    .controls { margin: 12px 16px; display: flex; flex-wrap: wrap; gap: 4px 0; }
+    label { margin: 0 10px; cursor: pointer; color: #ccc; font-size: 13px; }
 
-    .map-container { position: relative; display:inline-block; max-width:100%; }
-    .map-container img { width:100%; display:block; }
+    .map-container { position: relative; display: inline-block; max-width: 100%; width: 100%; }
+    .map-container img { width: 100%; display: block; }
+    svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .label { font-size: 0.7vw; fill: #eee; font-family: Arial, sans-serif; }
 
-    svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+    /* ── Side panel ── */
+    #info-panel {
+      position: fixed;
+      top: 0; right: 0;
+      width: 320px;
+      height: 100vh;
+      background: #1a1a22;
+      border-left: 1px solid #333;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+    #info-panel.open { transform: translateX(0); }
 
-    .label { font-size:0.7vw; fill:#222; }
+    #panel-header {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid #2a2a36;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      background: #1a1a22;
+      z-index: 2;
+    }
+    #panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f0f0f0;
+      line-height: 1.2;
+    }
+    #panel-subtitle {
+      font-size: 12px;
+      color: #888;
+      margin-top: 3px;
+    }
+    #panel-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 22px;
+      cursor: pointer;
+      line-height: 1;
+      flex-shrink: 0;
+      padding: 2px 4px;
+    }
+    #panel-close:hover { color: #ddd; }
+
+    #panel-body {
+      padding: 14px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .info-card {
+      background: #22222e;
+      border: 1px solid #2e2e3e;
+      border-radius: 10px;
+      padding: 14px 15px;
+    }
+    .info-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .info-card p {
+      font-size: 12px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    /* weather grid */
+    .weather-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .weather-month {
+      background: #1a1a24;
+      border-radius: 7px;
+      padding: 7px 4px;
+      text-align: center;
+    }
+    .wm-name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 2px; }
+    .wm-hi   { font-size: 15px; font-weight: 600; color: #e8e8e8; line-height: 1; }
+    .wm-lo   { font-size: 10px; color: #777; margin-top: 2px; }
+    .wm-rain { font-size: 10px; color: #5a9fcf; margin-top: 2px; }
+
+    /* water / safety badges */
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      margin-bottom: 5px;
+    }
+    .badge-safe    { background: #1a3d2a; color: #6dcf95; }
+    .badge-caution { background: #3d3010; color: #f0c060; }
+    .badge-danger  { background: #3d1010; color: #f08080; }
+
+    .safety-link {
+      display: block;
+      font-size: 11px;
+      color: #5a9fcf;
+      margin-top: 6px;
+      text-decoration: none;
+    }
+    .safety-link:hover { text-decoration: underline; }
+
+    /* rate */
+    .rate-big { font-size: 22px; font-weight: 300; color: #e0e0e0; letter-spacing: -0.01em; }
+    .rate-sub { font-size: 11px; color: #666; margin-top: 2px; }
+
+    /* shimmer */
+    .shimmer {
+      background: linear-gradient(90deg, #2a2a38 25%, #32323e 50%, #2a2a38 75%);
+      background-size: 200% 100%;
+      animation: sh 1.4s infinite;
+      border-radius: 4px;
+      height: 12px;
+      margin: 4px 0;
+    }
+    @keyframes sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* node highlight */
+    .node-hit { cursor: pointer; }
+    .node-hit circle { transition: r 0.12s; }
+    .node-hit:hover circle { filter: brightness(1.4); }
+
+    /* backdrop for mobile */
+    #panel-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 99;
+    }
+    #panel-backdrop.open { display: block; }
   </style>
 </head>
 <body>
 
-
-
-  <div class="map-container">
-    <img id="mapImage" src="maps/maps.001.png" alt="Map">
-    <svg id="overlay"></svg>
-      <div class="controls">
+  <div class="controls">
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear1"> Year 1</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear2"> Year 2</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear3"> Year 3</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleYear4"> Year 4</label>
     <label><input type="checkbox" checked onchange="drawRoutes()" id="toggleLabels"> Labels</label>
   </div>
+
+  <div class="map-container">
+    <img id="mapImage" src="maps/maps.001.png" alt="Map">
+    <svg id="overlay"></svg>
+  </div>
+
+  <div id="panel-backdrop"></div>
+
+  <div id="info-panel">
+    <div id="panel-header">
+      <div>
+        <div id="panel-title">–</div>
+        <div id="panel-subtitle"></div>
+      </div>
+      <button id="panel-close" title="Close">✕</button>
+    </div>
+    <div id="panel-body">
+      <div class="info-card" id="card-climate">
+        <div class="info-card-label">Climate</div>
+        <div class="shimmer" style="width:60%"></div>
+        <div class="weather-grid" id="weather-grid"></div>
+      </div>
+      <div class="info-card" id="card-water">
+        <div class="info-card-label">Water safety</div>
+        <div class="shimmer" style="width:45%"></div>
+      </div>
+      <div class="info-card" id="card-safety">
+        <div class="info-card-label">Travel safety</div>
+        <div class="shimmer" style="width:70%"></div>
+        <div class="shimmer" style="width:50%;margin-top:6px"></div>
+      </div>
+      <div class="info-card" id="card-rate">
+        <div class="info-card-label">Exchange rate (AUD)</div>
+        <div class="shimmer" style="width:55%"></div>
+      </div>
+    </div>
   </div>
 
   <script>
+    /* ════════════════ Route data ════════════════ */
     const routes = [
-          {
-        name: "Year 4",
-        color: "limegreen",
-        toggleId: "toggleYear4",
-        points: [
-
-{ x: 5, y: 11, label: "Alaska", labelPos: "above", startMode: "horizontal" },
-{ x: 22, y: 14, label: "Churchill", labelPos: "below", startMode: "horizontal" },
-{ x: 34, y: 11, label: "Greenland", labelPos: "above", startMode: "" },
-{ x: 42, y: 11, label: "Iceland", labelPos: "above", startMode: "" },
-{ x: 51, y: 11, label: "Norway", labelPos: "", startMode: "" },
-{ x: 51, y: 3, label: "Svalbard", labelPos: "left", startMode: "" },
-{ x: 51, y: 16, label: "Denmark", labelPos: "left", startMode: "" },
-{ x: 51, y: 22, label: "Budapest", labelPos: "", startMode: "" }
-
-        ]
-      },
-          
-          {
-        name: "Year 3",
-        color: "orange",
-        toggleId: "toggleYear3",
-        points: [
-
-{ x: 23, y: 39.5, label: "Belize", labelPos: "left", startMode: "vertical" },
-{ x: 24, y: 41.5, label: "Honduras", labelPos: "left", startMode: "" },
-{ x: 25, y: 43.5  , label: "Costa Rica", labelPos: "below", startMode: "" },
-{ x: 28, y: 38, label: "Sint Maarten", labelPos: "above", startMode: "horizontal" },
-{ x: 29, y: 40, label: "Guadeloupe", labelPos: "", startMode: "" },
-{ x: 29, y: 42, label: "Martinique", labelPos: "", startMode: "vertical" },
-{ x: 30, y: 54, label: "Manaus", labelPos: "", startMode: "" },
-{ x: 33, y: 59, label: "Pantanal", labelPos: "below", startMode: "" },
-{ x: 36, y: 59, label: "El Salvador", labelPos: "", startMode: "" },
-{ x: 37, y: 54, label: "Recife", labelPos: "", startMode: "" },
-{ x: 47, y: 19, label: "", labelPos: "above", startMode: "" },
-{ x: 52.5, y: 19, label: "Poland", labelPos: "", startMode: "" },
-{ x: 54, y: 16, label: "Latvia", labelPos: "right", startMode: "" },
-{ x: 54, y: 12, label: "Finland", labelPos: "above", startMode: "horizontal" },
-{ x: 66, y: 22, label: "Turkmenistan", labelPos: "below", startMode: "" },
-{ x: 75.5, y: 22, label: "Mongolia", labelPos: "above", startMode: "horizontal" },
-{ x: 77, y: 25, label: "China", labelPos: "", startMode: "" },
-{ x: 82, y: 28, label: "South Korea", labelPos: "", startMode: "" }
-
-        ]
-      },
-      
       {
-        name: "Year 2",
-        color: "darkviolet",
-        toggleId: "toggleYear2",
+        name: "Year 4", color: "limegreen", toggleId: "toggleYear4",
         points: [
-
-{ x: 80.5, y: 40.5, label: "Philippines", labelPos: "below", startMode: "" },
-{ x: 77, y: 40.5, label: "Vietnam", labelPos: "above", startMode: "" },
-{ x: 75, y: 40.5, label: "Cambodia", labelPos: "below", startMode: "horizontal" },
-{ x: 63, y: 36, label: "Oman", labelPos: "left", startMode: "" },
-{ x: 57, y: 32, label: "Jordan", labelPos: "below", startMode: "" },
-{ x: 55, y: 32, label: "Egypt", labelPos: "left", startMode: "vertical" },
-{ x: 58, y: 42, label: "Eritrea", labelPos: "left", startMode: "vertical" },
-{ x: 58, y: 44.5, label: "Ethiopia", labelPos: "left", startMode: "vertical" },
-{ x: 57, y: 49.5, label: "Kenya", labelPos: "", startMode: "" },
-{ x: 57, y: 53, label: "Tanzania", labelPos: "", startMode: "vertical" },
-{ x: 55, y: 61.5, label: "Zimbabwe", labelPos: "", startMode: "vertical" },
-{ x: 52.5, y: 68, label: "Cape Town", labelPos: "", startMode: "" },
-{ x: 26, y: 26.5, label: "New York", labelPos: "above", startMode: "" },
-{ x: 23.5, y: 30, label: "New Orleans", labelPos: "below", startMode: "" },
-{ x: 17, y: 30, label: "Utah", labelPos: "below", startMode: "" },
-{ x: 15, y: 30, label: "California", labelPos: "left", startMode: "" },
-{ x: 17, y: 30, label: "", labelPos: "", startMode: "" },
-{ x: 17, y: 26, label: "Wyoming", labelPos: "", startMode: "" },
-{ x: 17, y: 22, label: "Montana", labelPos: "", startMode: "" },
-{ x: 14, y: 22, label: "Washington", labelPos: "below", startMode: "" },
-{ x: 14, y: 15, label: "Canada", labelPos: "", startMode: "" },
-{ x: 5, y: 36, label: "Hawaii", labelPos: "", startMode: "" },
-{ x: 5, y: 57, label: "French Polynesia", labelPos: "", startMode: "" }
-
+          { x:5,  y:11, label:"Alaska",   labelPos:"above", startMode:"horizontal" },
+          { x:22, y:14, label:"Churchill", labelPos:"below", startMode:"horizontal" },
+          { x:34, y:11, label:"Greenland", labelPos:"above", startMode:"" },
+          { x:42, y:11, label:"Iceland",   labelPos:"above", startMode:"" },
+          { x:51, y:11, label:"Norway",    labelPos:"",      startMode:"" },
+          { x:51, y:3,  label:"Svalbard",  labelPos:"left",  startMode:"" },
+          { x:51, y:16, label:"Denmark",   labelPos:"left",  startMode:"" },
+          { x:51, y:22, label:"Budapest",  labelPos:"",      startMode:"" }
         ]
       },
-{
-        name: "Year 1",
-        color: "red",
-        toggleId: "toggleYear1",
+      {
+        name: "Year 3", color: "orange", toggleId: "toggleYear3",
         points: [
-          
-{ x: 27 , y:  77 , label: "Patagonia", labelPos: "left", startMode: "" },
-{ x: 28 , y:  67 , label: "Santiago", labelPos: "", startMode: "" },
-{ x: 17 , y:  67 , label: "Easter Island", labelPos: "below", startMode: "" },
-{ x: 28 , y:  67 , label: " ", labelPos: "", startMode: "" },
-{ x: 28 , y:  60 , label: "Bolivia", labelPos: "", startMode: "" },
-{ x: 27 , y:  58 , label: "Nazca ", labelPos: "", startMode: "" },
-{ x: 26 , y:  56 , label: "Cusco ", labelPos: "", startMode: "" },
-{ x: 40, y:  42 , label: "Cape Verde ", labelPos: "", startMode: "vertical" },
-{ x: 40, y: 28, label: "Azores", labelPos: "left", startMode: "" },
-{ x: 45 , y: 26.5, label: "Portugal ", labelPos: "below", startMode: "vertical" },
-{ x: 47 , y:  19 , label: "UK", labelPos: "left", startMode: "" },
-{ x: 52.5, y: 26.5, label: "Greece", labelPos: "above", startMode: "" },
-{ x: 55 , y: 26.5, label: "Turkiye ", labelPos: "below", startMode: "" },
-{ x: 60 , y: 26.5, label: "Azerbaijan", labelPos: "above", startMode: "" },
-{ x: 68.5, y: 36, label: "India", labelPos: "below", startMode: "" },
-{ x: 70.5, y: 33.5, label: "Nepal", labelPos: "above", startMode: "horizontal" },
-{ x: 73, y: 35, label: "Bhutan", labelPos: "right", startMode: "vertical" },
-{ x: 68, y: 47, label: "Maldives", labelPos: "below", startMode: "" }
-          
+          { x:23, y:39.5, label:"Belize",       labelPos:"left",  startMode:"vertical" },
+          { x:24, y:41.5, label:"Honduras",      labelPos:"left",  startMode:"" },
+          { x:25, y:43.5, label:"Costa Rica",    labelPos:"below", startMode:"" },
+          { x:28, y:38,   label:"Sint Maarten",  labelPos:"above", startMode:"horizontal" },
+          { x:29, y:40,   label:"Guadeloupe",    labelPos:"",      startMode:"" },
+          { x:29, y:42,   label:"Martinique",    labelPos:"",      startMode:"vertical" },
+          { x:30, y:54,   label:"Manaus",        labelPos:"",      startMode:"" },
+          { x:33, y:59,   label:"Pantanal",      labelPos:"below", startMode:"" },
+          { x:36, y:59,   label:"El Salvador",   labelPos:"",      startMode:"" },
+          { x:37, y:54,   label:"Recife",        labelPos:"",      startMode:"" },
+          { x:47, y:19,   label:"",              labelPos:"above", startMode:"" },
+          { x:52.5,y:19,  label:"Poland",        labelPos:"",      startMode:"" },
+          { x:54, y:16,   label:"Latvia",        labelPos:"right", startMode:"" },
+          { x:54, y:12,   label:"Finland",       labelPos:"above", startMode:"horizontal" },
+          { x:66, y:22,   label:"Turkmenistan",  labelPos:"below", startMode:"" },
+          { x:75.5,y:22,  label:"Mongolia",      labelPos:"above", startMode:"horizontal" },
+          { x:77, y:25,   label:"China",         labelPos:"",      startMode:"" },
+          { x:82, y:28,   label:"South Korea",   labelPos:"",      startMode:"" }
+        ]
+      },
+      {
+        name: "Year 2", color: "darkviolet", toggleId: "toggleYear2",
+        points: [
+          { x:80.5,y:40.5, label:"Philippines",    labelPos:"below", startMode:"" },
+          { x:77,  y:40.5, label:"Vietnam",        labelPos:"above", startMode:"" },
+          { x:75,  y:40.5, label:"Cambodia",       labelPos:"below", startMode:"horizontal" },
+          { x:64,  y:36,   label:"Oman",           labelPos:"left",  startMode:"" },
+          { x:57,  y:32,   label:"Jordan",         labelPos:"below", startMode:"" },
+          { x:55,  y:32,   label:"Egypt",          labelPos:"left",  startMode:"vertical" },
+          { x:58,  y:42,   label:"Eritrea",        labelPos:"left",  startMode:"vertical" },
+          { x:58,  y:44.5, label:"Ethiopia",       labelPos:"left",  startMode:"vertical" },
+          { x:57,  y:49.5, label:"Kenya",          labelPos:"",      startMode:"" },
+          { x:57,  y:53,   label:"Tanzania",       labelPos:"",      startMode:"vertical" },
+          { x:55,  y:61.5, label:"Zimbabwe",       labelPos:"",      startMode:"vertical" },
+          { x:52.5,y:68,   label:"Cape Town",      labelPos:"",      startMode:"" },
+          { x:26,  y:26.5, label:"New York",       labelPos:"above", startMode:"" },
+          { x:23.5,y:30,   label:"New Orleans",    labelPos:"below", startMode:"" },
+          { x:17,  y:30,   label:"Utah",           labelPos:"below", startMode:"" },
+          { x:15,  y:30,   label:"California",     labelPos:"left",  startMode:"" },
+          { x:17,  y:30,   label:"",               labelPos:"",      startMode:"" },
+          { x:17,  y:26,   label:"Wyoming",        labelPos:"",      startMode:"" },
+          { x:17,  y:22,   label:"Montana",        labelPos:"",      startMode:"" },
+          { x:14,  y:22,   label:"Washington",     labelPos:"below", startMode:"" },
+          { x:14,  y:15,   label:"Canada",         labelPos:"",      startMode:"" },
+          { x:5,   y:36,   label:"Hawaii",         labelPos:"",      startMode:"" },
+          { x:5,   y:57,   label:"French Polynesia",labelPos:"",     startMode:"" }
+        ]
+      },
+      {
+        name: "Year 1", color: "red", toggleId: "toggleYear1",
+        points: [
+          { x:27, y:77,   label:"Patagonia",   labelPos:"left",  startMode:"" },
+          { x:28, y:67,   label:"Santiago",    labelPos:"",      startMode:"" },
+          { x:17, y:67,   label:"Easter Island",labelPos:"below",startMode:"" },
+          { x:28, y:67,   label:" ",           labelPos:"",      startMode:"" },
+          { x:28, y:60,   label:"Bolivia",     labelPos:"",      startMode:"" },
+          { x:27, y:58,   label:"Nazca",       labelPos:"",      startMode:"" },
+          { x:26, y:56,   label:"Cusco",       labelPos:"",      startMode:"" },
+          { x:40, y:42,   label:"Cape Verde",  labelPos:"",      startMode:"vertical" },
+          { x:40, y:28,   label:"Azores",      labelPos:"left",  startMode:"" },
+          { x:45, y:26.5, label:"Portugal",    labelPos:"below", startMode:"vertical" },
+          { x:47, y:19,   label:"UK",          labelPos:"left",  startMode:"" },
+          { x:52.5,y:26.5,label:"Greece",      labelPos:"above", startMode:"" },
+          { x:55, y:26.5, label:"Turkiye",     labelPos:"below", startMode:"" },
+          { x:60, y:26.5, label:"Azerbaijan",  labelPos:"above", startMode:"" },
+          { x:68.5,y:36,  label:"India",       labelPos:"below", startMode:"" },
+          { x:70.5,y:33.5,label:"Nepal",       labelPos:"above", startMode:"horizontal" },
+          { x:73, y:35,   label:"Bhutan",      labelPos:"right", startMode:"vertical" },
+          { x:68, y:47,   label:"Maldives",    labelPos:"below", startMode:"" }
         ]
       }
     ];
 
-    // Create a constrained path (horizontal, vertical, 45° only)
-function buildSegment(p1, p2, startMode = null, endMode = null) {
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-
-  const adx = Math.abs(dx);
-  const ady = Math.abs(dy);
-
-  const signX = Math.sign(dx);
-  const signY = Math.sign(dy);
-
-  // --- PERFECT CASES ---
-  if (adx === 0 || ady === 0 || adx === ady) {
-    return [p1, p2];
-  }
-
-  // --- HELPERS (ALL VALID DIRECTIONS ONLY) ---
-  function diagFrom(p, d) {
-    return { x: p.x + signX * d, y: p.y + signY * d };
-  }
-
-  function horizTo(p, x) {
-    return { x: x, y: p.y };
-  }
-
-  function vertTo(p, y) {
-    return { x: p.x, y: y };
-  }
-
-  // --- DEFAULT (no overrides) ---
-  if (!startMode && !endMode) {
-    // prefer 1-bend L shape
-    return [
-      p1,
-      { x: p2.x, y: p1.y },
-      p2
-    ];
-  }
-
-  // --- START ONLY ---
-  if (startMode && !endMode) {
-    if (startMode === "horizontal") {
-      return [p1, horizTo(p1, p2.x), p2];
-    }
-
-    if (startMode === "vertical") {
-      return [p1, vertTo(p1, p2.y), p2];
-    }
-
-    if (startMode === "diagonal") {
-      const d = Math.min(adx, ady);
-      return [p1, diagFrom(p1, d), p2];
-    }
-  }
-
-  // --- END ONLY ---
-  if (!startMode && endMode) {
-    if (endMode === "horizontal") {
-      return [p1, { x: p1.x, y: p2.y }, p2];
-    }
-
-    if (endMode === "vertical") {
-      return [p1, { x: p2.x, y: p1.y }, p2];
-    }
-
-    if (endMode === "diagonal") {
-      const d = Math.min(adx, ady);
-      return [
-        p1,
-        { x: p2.x - signX * d, y: p2.y - signY * d },
-        p2
-      ];
-    }
-  }
-
-  // --- BOTH start + end ---
-  // Only allow 2 bends when necessary
-
-  const d = Math.min(adx, ady);
-
-  // Case: both want diagonal
-  if (startMode === "diagonal" && endMode === "diagonal") {
-    return [p1, diagFrom(p1, d), p2];
-  }
-
-  // Otherwise build clean 3-segment path (still only valid angles)
-  let mid1, mid2;
-
-  // start segment
-  if (startMode === "horizontal") {
-    mid1 = horizTo(p1, p1.x + signX * 1);
-  } else if (startMode === "vertical") {
-    mid1 = vertTo(p1, p1.y + signY * 1);
-  } else {
-    mid1 = diagFrom(p1, d);
-  }
-
-  // end segment
-  if (endMode === "horizontal") {
-    mid2 = { x: p2.x - signX * d, y: p2.y };
-  } else if (endMode === "vertical") {
-    mid2 = { x: p2.x, y: p2.y - signY * d };
-  } else {
-    mid2 = {
-      x: p2.x - signX * d,
-      y: p2.y - signY * d
+    /* ════════════════ Geo lookup table (lat/lon, water, currency per stop label) ════════════════ */
+    const STOP_DATA = {
+      "Alaska":           { lat:64.2,  lon:-153.4, water:"safe",    waterNote:"Tap water safe in cities. Varies in remote areas.", country:"United States", currency:"USD" },
+      "Churchill":        { lat:58.7,  lon:-94.2,  water:"safe",    waterNote:"Safe municipal water.", country:"Canada", currency:"CAD" },
+      "Greenland":        { lat:72.0,  lon:-40.0,  water:"safe",    waterNote:"Tap water is safe.", country:"Greenland (Denmark)", currency:"DKK" },
+      "Iceland":          { lat:64.9,  lon:-18.0,  water:"safe",    waterNote:"Among the purest tap water in the world.", country:"Iceland", currency:"ISK" },
+      "Norway":           { lat:60.5,  lon:8.5,    water:"safe",    waterNote:"Tap water is excellent throughout Norway.", country:"Norway", currency:"NOK" },
+      "Svalbard":         { lat:78.2,  lon:15.6,   water:"safe",    waterNote:"Tap water is safe in Longyearbyen.", country:"Norway", currency:"NOK" },
+      "Denmark":          { lat:56.0,  lon:10.0,   water:"safe",    waterNote:"Tap water is safe throughout Denmark.", country:"Denmark", currency:"DKK" },
+      "Budapest":         { lat:47.5,  lon:19.0,   water:"safe",    waterNote:"Tap water is safe in Budapest.", country:"Hungary", currency:"HUF" },
+      "Belize":           { lat:17.3,  lon:-88.5,  water:"caution", waterNote:"Stick to bottled water in most areas.", country:"Belize", currency:"BZD" },
+      "Honduras":         { lat:15.2,  lon:-86.2,  water:"caution", waterNote:"Bottled water recommended.", country:"Honduras", currency:"HNL" },
+      "Costa Rica":       { lat:9.7,   lon:-83.8,  water:"safe",    waterNote:"Tap water safe in most urban areas.", country:"Costa Rica", currency:"CRC" },
+      "Sint Maarten":     { lat:18.0,  lon:-63.1,  water:"caution", waterNote:"Use bottled water to be safe.", country:"Sint Maarten", currency:"ANG" },
+      "Guadeloupe":       { lat:16.3,  lon:-61.4,  water:"safe",    waterNote:"Tap water is safe.", country:"France", currency:"EUR" },
+      "Martinique":       { lat:14.6,  lon:-61.0,  water:"safe",    waterNote:"Tap water meets EU standards.", country:"France", currency:"EUR" },
+      "Manaus":           { lat:-3.1,  lon:-60.0,  water:"caution", waterNote:"Use bottled water.", country:"Brazil", currency:"BRL" },
+      "Pantanal":         { lat:-17.0, lon:-57.0,  water:"caution", waterNote:"Use filtered/bottled water.", country:"Brazil", currency:"BRL" },
+      "El Salvador":      { lat:-12.4, lon:-65.3,  water:"caution", waterNote:"Bottled water recommended.", country:"Brazil", currency:"BRL" },
+      "Recife":           { lat:-8.0,  lon:-34.9,  water:"caution", waterNote:"Use bottled water.", country:"Brazil", currency:"BRL" },
+      "Poland":           { lat:52.0,  lon:20.0,   water:"safe",    waterNote:"Tap water is safe in cities.", country:"Poland", currency:"PLN" },
+      "Latvia":           { lat:56.9,  lon:24.1,   water:"safe",    waterNote:"Tap water is safe.", country:"Latvia", currency:"EUR" },
+      "Finland":          { lat:64.0,  lon:26.0,   water:"safe",    waterNote:"Some of the best tap water in Europe.", country:"Finland", currency:"EUR" },
+      "Turkmenistan":     { lat:40.0,  lon:59.0,   water:"caution", waterNote:"Use bottled water.", country:"Turkmenistan", currency:"TMT" },
+      "Mongolia":         { lat:46.9,  lon:103.0,  water:"caution", waterNote:"Bottled water recommended outside cities.", country:"Mongolia", currency:"MNT" },
+      "China":            { lat:35.0,  lon:105.0,  water:"caution", waterNote:"Do not drink tap water.", country:"China", currency:"CNY" },
+      "South Korea":      { lat:36.5,  lon:127.8,  water:"safe",    waterNote:"Tap water is safe but many locals prefer filtered.", country:"South Korea", currency:"KRW" },
+      "Philippines":      { lat:12.9,  lon:121.8,  water:"caution", waterNote:"Use bottled water.", country:"Philippines", currency:"PHP" },
+      "Vietnam":          { lat:14.1,  lon:108.3,  water:"caution", waterNote:"Do not drink tap water.", country:"Vietnam", currency:"VND" },
+      "Cambodia":         { lat:12.6,  lon:104.9,  water:"caution", waterNote:"Use bottled water.", country:"Cambodia", currency:"USD" },
+      "Oman":             { lat:21.0,  lon:57.0,   water:"safe",    waterNote:"Tap water safe in cities.", country:"Oman", currency:"OMR" },
+      "Jordan":           { lat:31.0,  lon:36.5,   water:"caution", waterNote:"Tap water technically safe but mineral-heavy; bottled preferred.", country:"Jordan", currency:"JOD" },
+      "Egypt":            { lat:26.8,  lon:30.8,   water:"caution", waterNote:"Use bottled water.", country:"Egypt", currency:"EGP" },
+      "Kenya":            { lat:-1.0,  lon:37.0,   water:"caution", waterNote:"Use bottled or purified water.", country:"Kenya", currency:"KES" },
+      "Tanzania":         { lat:-6.4,  lon:34.9,   water:"caution", waterNote:"Use bottled water.", country:"Tanzania", currency:"TZS" },
+      "Zimbabwe":         { lat:-19.0, lon:29.7,   water:"caution", waterNote:"Bottled water essential.", country:"Zimbabwe", currency:"USD" },
+      "Cape Town":        { lat:-33.9, lon:18.4,   water:"safe",    waterNote:"Tap water safe; mind any local drought restrictions.", country:"South Africa", currency:"ZAR" },
+      "New York":         { lat:40.7,  lon:-74.0,  water:"safe",    waterNote:"Tap water is safe and high quality.", country:"United States", currency:"USD" },
+      "New Orleans":      { lat:29.9,  lon:-90.1,  water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "Utah":             { lat:39.3,  lon:-111.1, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "California":       { lat:36.7,  lon:-119.4, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "Wyoming":          { lat:43.0,  lon:-107.5, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "Montana":          { lat:46.9,  lon:-110.4, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "Washington":       { lat:47.4,  lon:-120.6, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "Canada":           { lat:60.0,  lon:-95.0,  water:"safe",    waterNote:"Tap water is safe in cities.", country:"Canada", currency:"CAD" },
+      "Hawaii":           { lat:20.8,  lon:-156.3, water:"safe",    waterNote:"Tap water is safe.", country:"United States", currency:"USD" },
+      "French Polynesia": { lat:-17.7, lon:-149.4, water:"caution", waterNote:"Use bottled water on most islands.", country:"France", currency:"XPF" },
+      "Patagonia":        { lat:-51.6, lon:-72.8,  water:"safe",    waterNote:"Safe in towns; check locally in backcountry.", country:"Argentina", currency:"ARS" },
+      "Santiago":         { lat:-33.4, lon:-70.6,  water:"safe",    waterNote:"Tap water is safe in Santiago.", country:"Chile", currency:"CLP" },
+      "Easter Island":    { lat:-27.1, lon:-109.4, water:"caution", waterNote:"Use bottled water.", country:"Chile", currency:"CLP" },
+      "Bolivia":          { lat:-16.5, lon:-64.0,  water:"caution", waterNote:"Use bottled water.", country:"Bolivia", currency:"BOB" },
+      "Nazca":            { lat:-14.8, lon:-74.9,  water:"caution", waterNote:"Use bottled water.", country:"Peru", currency:"PEN" },
+      "Cusco":            { lat:-13.5, lon:-71.9,  water:"caution", waterNote:"Use bottled water.", country:"Peru", currency:"PEN" },
+      "Cape Verde":       { lat:16.0,  lon:-24.0,  water:"caution", waterNote:"Use bottled water.", country:"Cape Verde", currency:"CVE" },
+      "Azores":           { lat:37.7,  lon:-25.7,  water:"safe",    waterNote:"Tap water is safe.", country:"Portugal", currency:"EUR" },
+      "Portugal":         { lat:39.6,  lon:-8.0,   water:"safe",    waterNote:"Tap water is safe throughout Portugal.", country:"Portugal", currency:"EUR" },
+      "UK":               { lat:54.0,  lon:-2.0,   water:"safe",    waterNote:"Excellent tap water quality.", country:"United Kingdom", currency:"GBP" },
+      "Greece":           { lat:39.0,  lon:22.0,   water:"safe",    waterNote:"Tap water safe in Athens and most cities.", country:"Greece", currency:"EUR" },
+      "Turkiye":          { lat:39.0,  lon:35.0,   water:"caution", waterNote:"Bottled water preferred.", country:"Türkiye", currency:"TRY" },
+      "Azerbaijan":       { lat:40.3,  lon:47.6,   water:"caution", waterNote:"Use bottled water.", country:"Azerbaijan", currency:"AZN" },
+      "India":            { lat:20.6,  lon:79.0,   water:"caution", waterNote:"Use bottled or filtered water everywhere.", country:"India", currency:"INR" },
+      "Nepal":            { lat:28.0,  lon:84.0,   water:"caution", waterNote:"Use bottled or boiled water.", country:"Nepal", currency:"NPR" },
+      "Bhutan":           { lat:27.5,  lon:90.4,   water:"caution", waterNote:"Use bottled water.", country:"Bhutan", currency:"BTN" },
+      "Maldives":         { lat:3.2,   lon:73.2,   water:"safe",    waterNote:"Most resorts provide safe desalinated water.", country:"Maldives", currency:"MVR" },
     };
-  }
 
-  return [p1, mid1, mid2, p2];
-}
+    /* ════════════════ Path geometry helpers ════════════════ */
+    function buildSegment(p1, p2, startMode) {
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      const signX = Math.sign(dx), signY = Math.sign(dy);
+      if (adx === 0 || ady === 0 || adx === ady) return [p1, p2];
+      if (!startMode) return [p1, { x: p2.x, y: p1.y }, p2];
+      if (startMode === "horizontal") return [p1, { x: p2.x, y: p1.y }, p2];
+      if (startMode === "vertical")   return [p1, { x: p1.x, y: p2.y }, p2];
+      const d = Math.min(adx, ady);
+      return [p1, { x: p1.x + signX * d, y: p1.y + signY * d }, p2];
+    }
 
-    // Rounded corners
     function roundedPath(points, radius) {
       if (points.length < 2) return "";
-
       let d = `M ${points[0].x} ${points[0].y}`;
-
       for (let i = 1; i < points.length - 1; i++) {
-        const p0 = points[i - 1];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-
-        const dx1 = p1.x - p0.x;
-        const dy1 = p1.y - p0.y;
-        const dx2 = p2.x - p1.x;
-        const dy2 = p2.y - p1.y;
-
-        const len1 = Math.hypot(dx1, dy1);
-        const len2 = Math.hypot(dx2, dy2);
-
-        const r = Math.min(radius, len1 / 2, len2 / 2);
-
-        const p1a = {
-          x: p1.x - (dx1 / len1) * r,
-          y: p1.y - (dy1 / len1) * r
-        };
-
-        const p1b = {
-          x: p1.x + (dx2 / len2) * r,
-          y: p1.y + (dy2 / len2) * r
-        };
-
-        d += ` L ${p1a.x} ${p1a.y}`;
-        d += ` Q ${p1.x} ${p1.y} ${p1b.x} ${p1b.y}`;
+        const p0 = points[i-1], p1 = points[i], p2 = points[i+1];
+        const dx1 = p1.x-p0.x, dy1 = p1.y-p0.y;
+        const dx2 = p2.x-p1.x, dy2 = p2.y-p1.y;
+        const len1 = Math.hypot(dx1,dy1), len2 = Math.hypot(dx2,dy2);
+        const r = Math.min(radius, len1/2, len2/2);
+        const p1a = { x: p1.x-(dx1/len1)*r, y: p1.y-(dy1/len1)*r };
+        const p1b = { x: p1.x+(dx2/len2)*r, y: p1.y+(dy2/len2)*r };
+        d += ` L ${p1a.x} ${p1a.y} Q ${p1.x} ${p1.y} ${p1b.x} ${p1b.y}`;
       }
-
-      const last = points[points.length - 1];
+      const last = points[points.length-1];
       d += ` L ${last.x} ${last.y}`;
-
       return d;
     }
 
     function getLabelOffset(pos) {
-      const viewWidth = window.innerWidth;
-      const offset = (viewWidth / 100) + 1;
-      switch (pos) {
-        case "above": return { dx: 0, dy: -offset, anchor: "middle" };
-        case "below": return { dx: 0, dy: offset * 1.5, anchor: "middle" };
-        case "left": return { dx: -offset, dy: 4, anchor: "end" };
-        default: return { dx: offset, dy: 4, anchor: "start" };
+      const offset = (window.innerWidth / 100) + 1;
+      switch(pos) {
+        case "above": return { dx:0, dy:-offset, anchor:"middle" };
+        case "below": return { dx:0, dy:offset*1.5, anchor:"middle" };
+        case "left":  return { dx:-offset, dy:4, anchor:"end" };
+        default:      return { dx:offset, dy:4, anchor:"start" };
       }
     }
 
+    /* ════════════════ Draw ════════════════ */
     function drawRoutes() {
       const svg = document.getElementById("overlay");
       svg.innerHTML = "";
-
       const map = document.getElementById("mapImage");
-      const width = map.clientWidth;
-      const height = map.clientHeight;
-
+      const width = map.clientWidth, height = map.clientHeight;
       const showLabels = document.getElementById("toggleLabels").checked;
 
       routes.forEach(route => {
-        const visible = document.getElementById(route.toggleId).checked;
-        if (!visible) return;
+        if (!document.getElementById(route.toggleId).checked) return;
 
+        // Draw paths
         for (let i = 0; i < route.points.length - 1; i++) {
-          const raw1 = route.points[i];
-          const raw2 = route.points[i + 1];
-
-          const p1 = {
-            x: raw1.x * width / 100,
-            y: raw1.y * height / 100
-          };
-
-          const p2 = {
-            x: raw2.x * width / 100,
-            y: raw2.y * height / 100
-          };
-
-          const mode = route.points[i].startMode || "diagonal";
-          const startMode = route.points[i].startMode || "diagonal";
-const endMode = route.points[i + 1].enterMode || "diagonal";
-
-const constrained = buildSegment(p1, p2, startMode, endMode);
-
-          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          const raw1 = route.points[i], raw2 = route.points[i+1];
+          const p1 = { x: raw1.x*width/100, y: raw1.y*height/100 };
+          const p2 = { x: raw2.x*width/100, y: raw2.y*height/100 };
+          const constrained = buildSegment(p1, p2, raw1.startMode || "diagonal");
+          const path = document.createElementNS("http://www.w3.org/2000/svg","path");
           path.setAttribute("d", roundedPath(constrained, 6));
           path.setAttribute("stroke", route.color);
-          path.setAttribute("stroke-width", (width/400) + 3);
+          path.setAttribute("stroke-width", (width/400)+3);
           path.setAttribute("fill", "none");
           path.setAttribute("stroke-linecap", "round");
-
           svg.appendChild(path);
         }
 
+        // Draw nodes
         route.points.forEach(p => {
-          const cx = p.x * width / 100;
-          const cy = p.y * height / 100;
+          if (!p.label || !p.label.trim()) return;
+          const cx = p.x*width/100, cy = p.y*height/100;
+          const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+          g.setAttribute("class","node-hit");
 
-          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
           circle.setAttribute("cx", cx);
           circle.setAttribute("cy", cy);
-          circle.setAttribute("r", (width/300)+ 2);
-          circle.setAttribute("fill", "white");
+          circle.setAttribute("r", (width/300)+2);
+          circle.setAttribute("fill","white");
           circle.setAttribute("stroke", route.color);
-          circle.setAttribute("stroke-width", (width/600) + 2);
-          svg.appendChild(circle);
+          circle.setAttribute("stroke-width", (width/600)+2);
+          g.appendChild(circle);
 
-          if (showLabels) {
-            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            const offset = getLabelOffset(p.labelPos);
-
-            text.setAttribute("x", cx + offset.dx);
-            text.setAttribute("y", cy + offset.dy);
-            text.setAttribute("text-anchor", offset.anchor);
-            text.setAttribute("class", "label");
-            text.textContent = p.label;
-
-            svg.appendChild(text);
+          if (showLabels && p.label.trim()) {
+            const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+            const off = getLabelOffset(p.labelPos);
+            text.setAttribute("x", cx+off.dx);
+            text.setAttribute("y", cy+off.dy);
+            text.setAttribute("text-anchor", off.anchor);
+            text.setAttribute("class","label");
+            text.textContent = p.label.trim();
+            g.appendChild(text);
           }
+
+          // Transparent hit area
+          const hit = document.createElementNS("http://www.w3.org/2000/svg","circle");
+          hit.setAttribute("cx", cx);
+          hit.setAttribute("cy", cy);
+          hit.setAttribute("r", Math.max((width/300)+10, 16));
+          hit.setAttribute("fill","transparent");
+          g.appendChild(hit);
+
+          g.addEventListener("click", () => openPanel(p.label.trim(), route.color));
+          svg.appendChild(g);
         });
       });
     }
 
+    /* ════════════════ Panel ════════════════ */
+    function openPanel(stopName, color) {
+      document.getElementById("panel-title").textContent = stopName;
+      document.getElementById("panel-subtitle").textContent = "";
+      document.getElementById("info-panel").classList.add("open");
+      document.getElementById("panel-backdrop").classList.add("open");
+
+      // Reset cards to shimmer
+      resetCard("card-climate","Climate",`
+        <div class="shimmer" style="width:60%;margin-bottom:8px"></div>
+        <div class="weather-grid" id="weather-grid">
+          ${[0,1,2,3].map(()=>`<div class="weather-month"><div class="shimmer" style="height:50px;width:100%"></div></div>`).join("")}
+        </div>
+      `);
+      resetCard("card-water","Water safety",`<div class="shimmer" style="width:55%"></div>`);
+      resetCard("card-safety","Travel safety",`<div class="shimmer" style="width:70%"></div><div class="shimmer" style="width:45%;margin-top:6px"></div>`);
+      resetCard("card-rate","Exchange rate (AUD)",`<div class="shimmer" style="width:50%"></div>`);
+
+      const info = STOP_DATA[stopName];
+      if (!info) {
+        document.getElementById("panel-subtitle").textContent = "No detailed data available for this stop.";
+        return;
+      }
+      document.getElementById("panel-subtitle").textContent = info.country;
+
+      fetchClimate(info.lat, info.lon);
+      setWater(info.water, info.waterNote);
+      fetchSafety(info.country);
+      fetchRate(info.currency);
+    }
+
+    function resetCard(id, label, inner) {
+      document.getElementById(id).innerHTML = `<div class="info-card-label">${label}</div>${inner}`;
+    }
+
+    function closePanel() {
+      document.getElementById("info-panel").classList.remove("open");
+      document.getElementById("panel-backdrop").classList.remove("open");
+    }
+
+    document.getElementById("panel-close").addEventListener("click", closePanel);
+    document.getElementById("panel-backdrop").addEventListener("click", closePanel);
+
+    /* ── Climate ── */
+    async function fetchClimate(lat, lon) {
+      const card = document.getElementById("card-climate");
+      try {
+        const url = `https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lon}&start_date=1991-01-01&end_date=2020-12-31&monthly=temperature_2m_max,temperature_2m_min,precipitation_sum&models=EC_Earth3P_HR`;
+        const data = await fetch(url).then(r => r.json());
+        if (!data.monthly) throw new Error();
+        const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const hi = data.monthly.temperature_2m_max;
+        const lo = data.monthly.temperature_2m_min;
+        const rn = data.monthly.precipitation_sum;
+        const keys = [0,3,6,9];
+        card.innerHTML = `
+          <div class="info-card-label">Climate (monthly avg)</div>
+          <div class="weather-grid">
+            ${keys.map(i => `
+              <div class="weather-month">
+                <div class="wm-name">${MO[i]}</div>
+                <div class="wm-hi">${Math.round(hi[i])}°</div>
+                <div class="wm-lo">${Math.round(lo[i])}° lo</div>
+                <div class="wm-rain">${Math.round(rn[i])}mm</div>
+              </div>`).join("")}
+          </div>
+          <p style="margin-top:8px">30-yr averages · Jan / Apr / Jul / Oct</p>`;
+      } catch(_) {
+        card.innerHTML = `<div class="info-card-label">Climate</div><p>Climate data unavailable.</p>`;
+      }
+    }
+
+    /* ── Water ── */
+    function setWater(status, note) {
+      const card = document.getElementById("card-water");
+      const badgeClass = { safe:"badge-safe", caution:"badge-caution", unsafe:"badge-danger" }[status] || "badge-caution";
+      const label = { safe:"Safe to drink", caution:"Use bottled water", unsafe:"Not safe" }[status] || "Check locally";
+      card.innerHTML = `
+        <div class="info-card-label">Water safety</div>
+        <div class="badge ${badgeClass}">${label}</div>
+        <p>${note}</p>`;
+    }
+
+    /* ── Safety ── */
+    const SAFETY_CLASS = { 1:"badge-safe", 2:"badge-caution", 3:"badge-danger", 4:"badge-danger" };
+
+    async function fetchSafety(countryName) {
+      const card = document.getElementById("card-safety");
+      try {
+        let country;
+        try {
+          const r = await fetch("travel-guides/data/safety-cache.json");
+          if (r.ok) {
+            const cache = await r.json();
+            country = cache[countryName];
+          }
+        } catch(_) {}
+
+        if (!country) {
+          const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent("https://www.smartraveller.gov.au/destinations-export")}`;
+          const r = await fetch(proxy);
+          const body = await r.json();
+          const list = JSON.parse(body.contents);
+          country = list.find(c => c.name === countryName);
+        }
+
+        if (!country) throw new Error("not found");
+        const level = country.advice_level;
+        const bc = SAFETY_CLASS[level] || "badge-caution";
+        card.innerHTML = `
+          <div class="info-card-label">Travel safety (Smartraveller)</div>
+          <div class="badge ${bc}">Level ${level}: ${country.advice_text}</div>
+          <p style="margin-top:5px">Updated ${country.last_updated}</p>
+          <a class="safety-link" href="${country.url}" target="_blank" rel="noopener">Full Smartraveller advice →</a>`;
+      } catch(_) {
+        const slug = countryName.toLowerCase().replace(/ /g,"-");
+        card.innerHTML = `
+          <div class="info-card-label">Travel safety</div>
+          <div class="badge badge-caution">Check before travel</div>
+          <a class="safety-link" href="https://www.smartraveller.gov.au/destinations/${slug}" target="_blank" rel="noopener">View Smartraveller advice →</a>`;
+      }
+    }
+
+    /* ── Exchange rate ── */
+    async function fetchRate(currencyCode) {
+      const card = document.getElementById("card-rate");
+      if (currencyCode === "AUD") {
+        card.innerHTML = `<div class="info-card-label">Currency</div><p>Local currency is AUD.</p>`;
+        return;
+      }
+      try {
+        const data = await fetch(`https://api.frankfurter.app/latest?from=AUD&to=${currencyCode}`).then(r => r.json());
+        const rate = data.rates[currencyCode];
+        if (!rate) throw new Error();
+        card.innerHTML = `
+          <div class="info-card-label">Exchange rate (AUD →  ${currencyCode})</div>
+          <div class="rate-big">${rate.toFixed(2)} ${currencyCode}</div>
+          <div class="rate-sub">per 1 AUD · live rate</div>
+          <p style="margin-top:6px">100 AUD ≈ ${(rate*100).toFixed(0)} ${currencyCode}</p>`;
+      } catch(_) {
+        card.innerHTML = `
+          <div class="info-card-label">Exchange rate (AUD → ${currencyCode})</div>
+          <p>Rate unavailable.</p>
+          <a class="safety-link" href="https://www.xe.com/currencyconverter/convert/?From=AUD&To=${currencyCode}" target="_blank">Check on XE.com →</a>`;
+      }
+    }
+
+    /* ════════════════ Init ════════════════ */
     window.onload = drawRoutes;
     window.onresize = drawRoutes;
   </script>
-
 </body>
 </html>
