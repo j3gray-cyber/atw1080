@@ -68,12 +68,12 @@ jobs:
           if data is None:
               print(f"All attempts failed. Last error: {last_error}")
               print("Skipping cache update — existing cache retained.")
-              sys.exit(0)
+              sys.exit(1)
 
           if not isinstance(data, list):
               print(f"Unexpected response type: {type(data)} — expected list.")
               print("Skipping cache update.")
-              sys.exit(0)
+              sys.exit(1)
 
           print(f"Parsed {len(data)} entries")
 
@@ -97,7 +97,7 @@ jobs:
 
           if not target:
               print(f"Could not find data/ folder. Dirs: {os.listdir('.')}")
-              sys.exit(0)
+              sys.exit(1)
 
           with open(target, 'w') as f:
               json.dump(cache, f, indent=2)
