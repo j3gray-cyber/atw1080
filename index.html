@@ -114,8 +114,15 @@
     }
 
     .besttime-cell {
-      height: 20px;
-      border-radius: 4px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
     }
 
     .best { background: #2ecc71; }
@@ -974,7 +981,20 @@
         return;
       }
 
-      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const months = [
+        { m: "Jan", l: "J" },
+        { m: "Feb", l: "F" },
+        { m: "Mar", l: "M" },
+        { m: "Apr", l: "A" },
+        { m: "May", l: "M" },
+        { m: "Jun", l: "J" },
+        { m: "Jul", l: "J" },
+        { m: "Aug", l: "A" },
+        { m: "Sep", l: "S" },
+        { m: "Oct", l: "O" },
+        { m: "Nov", l: "N" },
+        { m: "Dec", l: "D" }
+      ];
 
       const state = (m) => {
         if (data.months.includes(m)) return "best";
@@ -982,10 +1002,8 @@
         return "shoulder";
       };
 
-      grid.className = "besttime-grid";
-
-      grid.innerHTML = months.map(m => {
-        return `<div class="besttime-cell ${state(m)}" title="${m}"></div>`;
+      grid.innerHTML = months.map(({ m, l }) => {
+        return `<div class="besttime-cell ${state(m)}">${l}</div>`;
       }).join("");
 
       text.innerHTML = `
