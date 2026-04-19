@@ -1,5 +1,5 @@
 /**
- * dest.js — Shared rendering engine for all destination pages. (v2)
+ * dest.js — Shared rendering engine for all destination pages.
  * Each destinations/XXX.html sets <body data-dest="XXX">.
  */
 
@@ -28,19 +28,19 @@
   function shimmer(w, h) {
     return el('div', {
       class: 'shimmer',
-      style: `width:${w || '100%'};height:${h || '12px'};border-radius:4px;margin:4px 0;`
+      style: `width:${w||'100%'};height:${h||'13px'};border-radius:4px;margin:4px 0;`
     });
   }
 
   // ─── Safety maps ─────────────────────────────────────────────────────────
 
-  const SAFETY_CLASS = { 1: 'safe', 2: 'caution', 3: 'warn', 4: 'danger' };
-  const SAFETY_ICON  = { 1: 'check_circle', 2: 'info', 3: 'warning', 4: 'dangerous' };
+  const SAFETY_CLASS = { 1:'safe', 2:'caution', 3:'warn', 4:'danger' };
+  const SAFETY_ICON  = { 1:'check_circle', 2:'info', 3:'warning', 4:'dangerous' };
 
   // ─── Builders ────────────────────────────────────────────────────────────
 
   function sectionTitle(iconName, label) {
-    return el('div', { class: 'section-title' }, icon(iconName, 'icon-sm'), label);
+    return el('div', { class: 'section-title' }, icon(iconName), label);
   }
 
   function section(iconName, label, ...children) {
@@ -52,7 +52,7 @@
   }
 
   function panelTitle(iconName, label) {
-    return el('div', { class: 'panel-title' }, icon(iconName, 'icon-sm'), label);
+    return el('div', { class: 'panel-title' }, icon(iconName), label);
   }
 
   // ─── Main render ─────────────────────────────────────────────────────────
@@ -60,10 +60,13 @@
   function render(d) {
     document.title = `${d.title} | Travel Guides`;
 
+    // Update header breadcrumb
     const crumb = document.getElementById('nav-crumb');
     if (crumb) crumb.textContent = d.title;
 
     const page = document.querySelector('.page');
+
+    // Keep the site-header, remove everything else
     const header = page.querySelector('.site-header');
     page.innerHTML = '';
     if (header) page.append(header);
@@ -102,10 +105,10 @@
 
     // Quick facts
     const facts = [
-      { ic: 'schedule',          label: 'Timezone',  val: d.quick_facts.timezone  },
-      { ic: 'travel_explore',    label: 'Visa',      val: d.quick_facts.visa      },
-      { ic: 'record_voice_over', label: 'Language',  val: d.quick_facts.language  },
-      { ic: 'credit_card',       label: 'Payments',  val: d.quick_facts.payments  },
+      { ic: 'schedule',     label: 'Timezone',  val: d.quick_facts.timezone  },
+      { ic: 'travel_explore', label: 'Visa',    val: d.quick_facts.visa      },
+      { ic: 'record_voice_over', label: 'Language', val: d.quick_facts.language },
+      { ic: 'credit_card',  label: 'Payments',  val: d.quick_facts.payments  },
     ];
     page.append(el('div', { class: 'quick-facts' },
       ...facts.map(f =>
@@ -119,7 +122,7 @@
       )
     ));
 
-    // Async panel placeholders
+    // Sidebar panels (rendered now, data filled async)
     const safetyPanelEl  = makeSafetyPanel();
     const weatherPanelEl = makeWeatherPanel();
     const ratePanelEl    = makeRatePanel(d);
@@ -129,13 +132,13 @@
       el('div', { class: 'grid' },
 
         el('div', {},
-          section('star',              'Why go',                cardList(d.why_go)),
-          section('hotel_class',       'Essential experiences', cardList(d.essential_experiences)),
+          section('star',            'Why go',              cardList(d.why_go)),
+          section('hotel_class',     'Essential experiences', cardList(d.essential_experiences)),
           renderSeasonality(d),
-          section('restaurant',        'Food & drink',          cardList(d.food_and_drink)),
-          section('directions',        'Logistics',             cardList(d.logistics)),
-          section('report',            'Friction factors',      cardList(d.friction_factors)),
-          section('tips_and_updates',  'Tips & watchouts',      cardList(d.tips)),
+          section('restaurant',      'Food & drink',        cardList(d.food_and_drink)),
+          section('directions',      'Logistics',           cardList(d.logistics)),
+          section('report',          'Friction factors',    cardList(d.friction_factors)),
+          section('tips_and_updates','Tips & watchouts',    cardList(d.tips)),
           renderItinerary(d),
         ),
 
@@ -156,7 +159,7 @@
       )
     );
 
-    // Kick off async panels
+    // Async panel data
     fetchSafety(d, safetyPanelEl);
     fetchWeather(d, weatherPanelEl);
     fetchRate(d, ratePanelEl);
@@ -172,9 +175,9 @@
     );
     const legend = el('div', { class: 'season-legend' },
       ...[
-        { dot: '#86efac', label: 'Good' },
-        { dot: '#fde047', label: 'OK'   },
-        { dot: '#fca5a5', label: 'Avoid'},
+        { cls: 'good', dot: '#86efac', label: 'Good' },
+        { cls: 'ok',   dot: '#fde047', label: 'OK'   },
+        { cls: 'bad',  dot: '#fca5a5', label: 'Avoid'},
       ].map(({ dot, label }) =>
         el('span', {},
           el('span', { class: 's-dot', style: `background:${dot}` }),
@@ -183,7 +186,8 @@
       )
     );
     const note = el('p', { class: 'season-note' }, d.seasonality_note);
-    return section('calendar_today', 'When to go', months, legend, note);
+    const wrap = el('div', { class: 'months-wrap' }, months, legend, note);
+    return section('calendar_today', 'When to go', wrap);
   }
 
   // ─── Itinerary ───────────────────────────────────────────────────────────
@@ -205,15 +209,15 @@
   function makeSafetyPanel() {
     return el('div', { class: 'panel caution', id: 'safety-panel' },
       panelTitle('shield', 'Safety advice'),
-      shimmer('65%', '14px'),
+      shimmer('65%', '15px'),
       shimmer('100%', '11px'),
-      shimmer('70%',  '11px'),
+      shimmer('75%', '11px'),
     );
   }
 
   function makeWaterPanel(w) {
-    const cls      = { safe: 'safe', caution: 'caution', unsafe: 'danger' }[w.status] || 'caution';
-    const iconName = { safe: 'water_drop', caution: 'water_drop', unsafe: 'do_not_disturb_on' }[w.status] || 'water_drop';
+    const cls     = { safe:'safe', caution:'caution', unsafe:'danger' }[w.status] || 'caution';
+    const iconName = { safe:'water_drop', caution:'water_drop', unsafe:'do_not_disturb_on' }[w.status] || 'water_drop';
     return el('div', { class: `panel ${cls}` },
       panelTitle(iconName, 'Water safety'),
       el('div', { class: 'badge' }, w.label),
@@ -225,7 +229,7 @@
     return el('div', { class: 'panel', id: 'weather-panel' },
       panelTitle('thermostat', 'Climate'),
       shimmer('80%', '11px'),
-      shimmer('100%', '58px'),
+      shimmer('100%', '60px'),
     );
   }
 
@@ -237,11 +241,14 @@
   }
 
   // ─── Async: Smartraveller ─────────────────────────────────────────────────
+  // Strategy: nightly cache only. The live CORS proxy (allorigins) is too
+  // unreliable to be worth a round-trip — if the cache misses, show fallback.
 
   async function fetchSafety(d, panel) {
     try {
       let country;
 
+      // Try nightly cache (written by GitHub Action)
       try {
         const r = await fetch('../data/safety-cache.json');
         if (r.ok) {
@@ -250,15 +257,7 @@
         }
       } catch (_) {}
 
-      if (!country) {
-        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.smartraveller.gov.au/destinations-export')}`;
-        const r    = await fetch(proxy);
-        const body = await r.json();
-        const list = JSON.parse(body.contents);
-        country = list.find(c => c.name === d.smartraveller_country);
-      }
-
-      if (!country) throw new Error('Not found');
+      if (!country) throw new Error('Not in cache');
 
       const level = country.advice_level;
       panel.className = `panel ${SAFETY_CLASS[level] || 'caution'}`;
@@ -272,13 +271,14 @@
       );
 
     } catch (_) {
+      // Graceful fallback — link directly to Smartraveller
       const slug = d.smartraveller_country.toLowerCase().replace(/ /g, '-');
       panel.className = 'panel caution';
       panel.innerHTML = '';
       panel.append(
         panelTitle('warning', 'Safety advice'),
         el('div', { class: 'badge' }, 'Check before travel'),
-        el('p', {}, 'Live advice unavailable.'),
+        el('p', {}, 'Live advice unavailable — check Smartraveller directly.'),
         el('a', {
           href: `https://www.smartraveller.gov.au/destinations/${slug}`,
           target: '_blank', rel: 'noopener',
@@ -288,43 +288,71 @@
   }
 
   // ─── Async: Open-Meteo climate ────────────────────────────────────────────
+  // Uses the open-meteo forecast API with past data (free, no key, CORS-safe).
+  // We fetch the last 12 months of daily data and bucket by month ourselves,
+  // which is far more reliable than the climate normals endpoint.
 
   async function fetchWeather(d, panel) {
     if (!d.climate) return;
     try {
+      // Use the standard forecast API in "past" mode — always works, no model arg needed
       const url = [
-        'https://climate-api.open-meteo.com/v1/climate',
+        'https://api.open-meteo.com/v1/forecast',
         `?latitude=${d.climate.lat}&longitude=${d.climate.lon}`,
-        '&start_date=1991-01-01&end_date=2020-12-31',
-        '&monthly=temperature_2m_max,temperature_2m_min,precipitation_sum',
-        '&models=EC_Earth3P_HR',
+        '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum',
+        '&past_days=365',
+        '&forecast_days=1',
+        '&timezone=auto',
       ].join('');
 
       const data = await fetch(url).then(r => r.json());
-      if (!data.monthly) throw new Error('No data');
+      if (!data.daily || !data.daily.time) throw new Error('No data');
 
+      const times = data.daily.time;           // "YYYY-MM-DD"
+      const hiArr = data.daily.temperature_2m_max;
+      const loArr = data.daily.temperature_2m_min;
+      const rnArr = data.daily.precipitation_sum;
+
+      // Bucket daily values into calendar months (0–11)
+      const buckets = Array.from({ length: 12 }, () => ({ hi: [], lo: [], rn: [] }));
+      times.forEach((t, i) => {
+        const mo = parseInt(t.slice(5, 7), 10) - 1;
+        if (hiArr[i] != null) buckets[mo].hi.push(hiArr[i]);
+        if (loArr[i] != null) buckets[mo].lo.push(loArr[i]);
+        if (rnArr[i] != null) buckets[mo].rn.push(rnArr[i]);
+      });
+
+      const avg  = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+      const sum  = arr => arr.length ? arr.reduce((a, b) => a + b, 0) : null;
       const MO   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const hi   = data.monthly.temperature_2m_max;
-      const lo   = data.monthly.temperature_2m_min;
-      const rn   = data.monthly.precipitation_sum;
+
+      // Pick 4 representative months: Jan, Apr, Jul, Oct
       const keys = [0, 3, 6, 9];
 
       const grid = el('div', { class: 'weather-grid' },
-        ...keys.map(i =>
-          el('div', { class: 'weather-month' },
+        ...keys.map(i => {
+          const hi = avg(buckets[i].hi);
+          const lo = avg(buckets[i].lo);
+          const rn = sum(buckets[i].rn) != null
+            ? Math.round(sum(buckets[i].rn) / Math.max(buckets[i].rn.length / 30, 1))
+            : null;
+          return el('div', { class: 'weather-month' },
             el('div', { class: 'wm-name' }, MO[i]),
-            el('div', { class: 'wm-hi' },   `${Math.round(hi[i])}°`),
-            el('div', { class: 'wm-lo' },   `${Math.round(lo[i])}° lo`),
-            el('div', { class: 'wm-rain' }, icon('water_drop', 'icon-sm'), `${Math.round(rn[i])}mm`),
-          )
-        )
+            el('div', { class: 'wm-hi' },   hi != null ? `${Math.round(hi)}°` : '–'),
+            el('div', { class: 'wm-lo' },   lo != null ? `${Math.round(lo)}° lo` : '–'),
+            el('div', { class: 'wm-rain' },
+              icon('water_drop', 'icon-sm'),
+              rn != null ? `${rn}mm` : '–',
+            ),
+          );
+        })
       );
 
       panel.innerHTML = '';
       panel.append(
         panelTitle('thermostat', 'Climate'),
         grid,
-        el('p', { style: 'margin-top:7px;font-size:0.72rem;' }, '30-yr averages · Jan / Apr / Jul / Oct'),
+        el('p', { style: 'margin-top:8px;font-size:0.74rem;' }, 'Past-year averages · Jan / Apr / Jul / Oct'),
       );
     } catch (_) {
       panel.innerHTML = '';
@@ -332,7 +360,9 @@
     }
   }
 
-  // ─── Async: Frankfurter exchange rate ─────────────────────────────────────
+  // ─── Async: Exchange rate ──────────────────────────────────────────────────
+  // Frankfurter redirects to HTTPS and loses CORS headers on the 301.
+  // Use the ExchangeRate-API open endpoint instead — no key, proper CORS.
 
   async function fetchRate(d, panel) {
     const code = d.currency.code;
@@ -342,16 +372,18 @@
       return;
     }
     try {
-      const data = await fetch(`https://api.frankfurter.app/latest?from=AUD&to=${code}`).then(r => r.json());
+      // open.er-api.com — free tier, no key, correct CORS headers
+      const data = await fetch(`https://open.er-api.com/v6/latest/AUD`).then(r => r.json());
+      if (data.result !== 'success') throw new Error('API error');
       const rate = data.rates[code];
-      if (!rate) throw new Error();
+      if (!rate) throw new Error('Currency not found');
 
       panel.innerHTML = '';
       panel.append(
         panelTitle('currency_exchange', `AUD → ${code}`),
         el('div', { class: 'rate-display' }, `${rate.toFixed(2)} ${code}`),
         el('div', { class: 'rate-sub' }, `per 1 AUD · ${d.currency.label} · live`),
-        el('p', { style: 'margin-top:5px;font-size:0.8rem;' },
+        el('p', { style: 'margin-top:6px;font-size:0.82rem;' },
           `100 AUD ≈ ${(rate * 100).toFixed(0)} ${code}`),
       );
     } catch (_) {
